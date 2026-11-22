@@ -28,6 +28,22 @@ jobs:
         with:
           gradle-version: '9.5.1'
 
+      - name: Use official Maven repositories
+        run: |
+          mkdir -p "$GRADLE_USER_HOME/init.d"
+          {
+            echo 'settingsEvaluated { settings ->'
+            echo '  settings.pluginManagement.repositories.clear()'
+            echo '  settings.pluginManagement.repositories.gradlePluginPortal()'
+            echo '  settings.pluginManagement.repositories.google()'
+            echo '  settings.pluginManagement.repositories.mavenCentral()'
+            echo '  settings.dependencyResolutionManagement.repositories.clear()'
+            echo '  settings.dependencyResolutionManagement.repositories.google()'
+            echo '  settings.dependencyResolutionManagement.repositories.mavenCentral()'
+            echo '}'
+          } > "$GRADLE_USER_HOME/init.d/ci-repos.gradle"
+          cat "$GRADLE_USER_HOME/init.d/ci-repos.gradle"
+
       - name: Install Android SDK packages
         run: |
           if [ -x "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" ]; then
