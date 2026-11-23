@@ -53,6 +53,7 @@ Github提交issue的各位：[yinshu2002](https://github.com/yinshu2002)、[lyst
 - 本地阅读：已下载漫画可从本地缓存或 zip 包中读取图片。
 - PDF 导出：已缓存漫画可通过系统目录授权导出为 PDF。
 - AI 对话：提供本地会话管理和流式响应展示，支持可选的思考块展示逻辑。
+- 应用内更新：启动时自动检查本仓库 GitHub Release，检测到新版本可直接在应用内下载并安装。
 - 本地设置：支持 API 域名、图片分流、主题模式、阅读模式和预加载数量等配置。
 - 深色模式：通过 Material 3 主题适配浅色、深色和跟随系统模式。
 
@@ -465,6 +466,17 @@ base64 -w0 jm-release.jks > jm-release.b64
 ```
 
 工作流会把密钥还原到 `$RUNNER_TEMP/jm-release.jks` 并设置 `JM_REQUIRE_RELEASE_SIGNING=true`；缺少密钥时构建直接失败，避免再产出签名不稳定的“发布包”。
+
+构建成功后会自动发布 GitHub Release：标签取 `version.properties` 里的 `v{VERSION_NAME}`，资产是 `jm-mobile_v*_*.apk`，同版本重复构建会覆盖旧资产。发布步骤只在 `main` 分支或 `v*` 标签上执行，分支上的验证构建只产出 artifact。
+
+## 应用内更新
+
+「设置 → 检查更新」手动检查，App 启动后也会静默检查一次（24 小时内不重复请求）。更新源是本仓库 fork 的 GitHub Releases（`G1oow/jmcomic-next`，常量见 `utils/AppUpdateVersion.kt`）：
+
+- 读取 `https://api.github.com/repos/G1oow/jmcomic-next/releases/latest`，版本号来自标签，按 `VERSION_NAME` 逐段比较。
+- 检测到新版本会弹提示，可直接在应用内下载 APK（支持暂停、后台下载、通知进度），下载完成后调起系统安装器。
+- Android 8.0 起安装未知来源应用需要单独授权，首次安装会跳转到本应用的授权页。
+- 想要被检测到，Release 必须是非草稿、非预发布并标记为 latest。
 
 ## 开发说明
 

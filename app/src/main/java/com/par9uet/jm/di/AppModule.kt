@@ -14,7 +14,9 @@ import com.par9uet.jm.storage.PersonaStorage
 import com.par9uet.jm.storage.ReadHistoryStorage
 import com.par9uet.jm.storage.SecureStorage
 import com.par9uet.jm.storage.UserStorage
+import com.par9uet.jm.storage.AppUpdateStorage
 import com.par9uet.jm.store.AppUpdateDownloadManager
+import com.par9uet.jm.store.AppUpdateManager
 import com.par9uet.jm.store.DownloadToastAggregator
 import com.par9uet.jm.store.HistorySearchManager
 import com.par9uet.jm.store.InitManager
@@ -54,6 +56,7 @@ val appModule = module {
     single { ReadHistoryStorage(get()) }
     single { AiChatStorage(get(), get()) }
     single { PersonaStorage(get()) }
+    single { AppUpdateStorage(get()) }
     single { LauncherDisguiseApplier(get()) }
 
     single { RemoteSettingRepositoryImpl(get(), get()) } bind RemoteSettingRepository::class
@@ -70,6 +73,7 @@ val appModule = module {
     single { DownloadToastAggregator(get()) }
     single { InitManager() }
     single { AppUpdateDownloadManager(get(), get(), get(), get()) }
+    single { AppUpdateManager(get(), get(), get(), get()) }
 
     single<Gson> { GsonBuilder().setStrictness(Strictness.LENIENT).serializeNulls().create() }
 

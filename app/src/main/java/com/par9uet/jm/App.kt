@@ -33,6 +33,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.compose.rememberNavController
+import com.par9uet.jm.store.AppUpdateManager
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.ToastManager
 import com.par9uet.jm.store.UserManager
@@ -43,6 +44,7 @@ import com.par9uet.jm.ui.screens.DuressWoodenFishScreen
 import com.par9uet.jm.ui.screens.LoadingScreen
 import com.par9uet.jm.ui.screens.NsfwWarningDialog
 import com.par9uet.jm.ui.screens.WelcomeScreen
+import com.par9uet.jm.ui.components.AppUpdateDialog
 import com.par9uet.jm.ui.components.ComicCoverImage
 import com.par9uet.jm.ui.viewModel.ComicViewModel
 import com.par9uet.jm.ui.viewModel.GlobalViewModel
@@ -59,6 +61,7 @@ fun App(
     toastManager: ToastManager = getKoin().get(),
     localSettingManager: LocalSettingManager = getKoin().get(),
     userManager: UserManager = getKoin().get(),
+    appUpdateManager: AppUpdateManager = getKoin().get(),
 ) {
     val localSetting by localSettingManager.localSettingState.collectAsState()
 
@@ -77,6 +80,7 @@ fun App(
     var splashVisible by rememberSaveable { mutableStateOf(false) }
     var splashSkipVisible by rememberSaveable { mutableStateOf(false) }
     val homeComicState by comicViewModel.homeComicState.collectAsState()
+    val appUpdateState by appUpdateManager.state.collectAsState()
 
     fun enterDuressMode() {
         DuressSession.active = true
@@ -160,6 +164,12 @@ fun App(
         val isSigned = signData.data?.dateMap?.get(todayDayOfMonth)?.isSign == true
         if (isSigned) return@LaunchedEffect
         userViewModel.signIn()
+    }
+
+    // 自动检查更新：解锁且设置加载完成后，一天最多请求一次 GitHub Release。
+    LaunchedEffect(settingsLoaded, isLocked, showOnboarding) {
+        if (!settingsLoaded || isLocked || showOnboarding) return@LaunchedEffect
+        appUpdateManager.checkOnLaunch()
     }
 
     // ON_PAUSE 比 ON_STOP 更可靠：按 Home、切换应用、锁屏或打开外部系统界面时立即上锁。
@@ -359,6 +369,17 @@ fun App(
                     // 本次会话关闭，下次启动再次提示
                     sessionNsfwDismissed = true
                 }
+            )
+        }
+
+        // 自动检查到新版本时的提示；锁屏覆盖层之上不打扰。
+        val pendingUpdate = appUpdateState.release
+        if (pendingUpdate != null && !showAppLock) {
+            AppUpdateDialog(
+                release = pendingUpdate,
+                installedVersion = appUpdateManager.installedVersion,
+                onDismiss = { appUpdateManager.dismissPrompt() },
+                onSkipVersion = { appUpdateManager.dismissPrompt(skipVersion = true) },
             )
         }
 

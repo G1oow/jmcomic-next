@@ -7,7 +7,7 @@ on:
       - 'v*'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -16,6 +16,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: |
+          set -euo pipefail
+          version_name=$(sed -n 's/^VERSION_NAME=//p' version.properties | tr -d '\r' | head -n1)
+          version_code=$(sed -n 's/^VERSION_CODE=//p' version.properties | tr -d '\r' | head -n1)
+          if [ -z "$version_name" ] || [ -z "$version_code" ]; then
+            echo "::error::version.properties 缺少 VERSION_NAME 或 VERSION_CODE"
+            exit 1
+          fi
+          echo "name=$version_name" >> "$GITHUB_OUTPUT"
+          echo "code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version_name" >> "$GITHUB_OUTPUT"
+          echo "版本 $version_name (versionCode $version_code)"
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -75,6 +90,47 @@ jobs:
           JM_RELEASE_KEY_PASSWORD: ${{ secrets.JM_RELEASE_KEY_PASSWORD }}
           JM_REQUIRE_RELEASE_SIGNING: 'true'
         run: gradle :app:assembleRelease --no-daemon --stacktrace --console=plain
+
+      # 只在 main 或 v* 标签上发布，分支上的验证构建不会产生 Release 和标签。
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag' || github.ref_name == 'main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -n1)
+          echo "使用安装包 $apk"
+
+          notes="$RUNNER_TEMP/release-notes.md"
+          {
+            echo "版本 \`$TAG\`（versionCode $VERSION_CODE）"
+            echo
+            echo "APK 由 GitHub Actions 使用项目自有密钥签名，可直接下载覆盖安装；"
+            echo "应用内的「检查更新」会读取这个 Release。"
+          } > "$notes"
+
+          if [ -f CHANGELOG.md ] && grep -qE "^#+ *v${VERSION_NAME}( |$)" CHANGELOG.md; then
+            echo >> "$notes"
+            awk -v pat="^#+ *v${VERSION_NAME}( |$)" '
+              $0 ~ pat { inside = 1; next }
+              inside && /^#+ / { exit }
+              inside { print }
+            ' CHANGELOG.md >> "$notes"
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG 已存在，更新说明并覆盖 APK"
+            gh release edit "$TAG" --title "$TAG" --notes-file "$notes" --latest
+            gh release upload "$TAG" "$apk" --clobber
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            gh release create "$TAG" "$apk" --title "$TAG" --notes-file "$notes" --latest --verify-tag
+          else
+            gh release create "$TAG" "$apk" --title "$TAG" --notes-file "$notes" --latest --target "$GITHUB_SHA"
+          fi
+          echo "已发布 $TAG"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

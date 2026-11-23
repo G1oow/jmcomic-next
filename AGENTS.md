@@ -199,10 +199,16 @@ VERSION_CODE=126
 VERSION_NAME=1.2.6
 ```
 
-- `VERSION_CODE` 必须是**整数**且每次发版递增；写入非整数会让 `versionCode` 为空，安装与升级会出问题。
-- `VERSION_NAME` 用语义化版本。
-- APK 输出名自动带上版本与短 hash：`jm-mobile_v{versionName}_{gitHash}.apk`。
-- 面向用户的变更同步更新 `CHANGELOG`，格式为 `# 未发布` 累积条目，发版时改成 `# vX.Y.Z`。
+发版时两个值必须一起改，且满足：
+
+- `VERSION_CODE` 是**正整数**，每次发版 `+1`，只增不减、不复用历史值。写入非整数会让 `versionCode` 为空（`toIntOrNull()` 没有默认值），安装和升级都会出问题。
+- `VERSION_NAME` 用 `MAJOR.MINOR.PATCH` 三段数字，逐段单调递增；不带 `v` 前缀，不带构建号、日期或 `-beta` 之外的标记。应用内更新检查按它逐段比较，命名乱序会让用户收不到更新或反复被提示。
+- 标签统一为 `v{VERSION_NAME}`，由 CI 依 `version.properties` 自动创建，不要手打标签；标签与 `version.properties` 不一致会导致 Release 和安装包版本对不上。
+- APK 输出名自动带上版本与短 hash：`jm-mobile_v{versionName}_{gitHash}.apk`；应用内更新按 `jm-mobile_v{versionName}` 前缀挑选下载资产，改命名规则要同步改 `selectApkAsset`。
+- 只有可见变化才升号：纯 CI、文档改动不升 `VERSION_CODE`。
+- 面向用户的变更同步更新 `CHANGELOG.md`（若存在）：平时累积在 `# 未发布` 下，发版时改成 `# vX.Y.Z`，CI 会把该段落写进 Release 说明。
+- Release 必须是非草稿、非预发布并标记为 latest，否则 `releases/latest` 取不到，应用内检查更新会一直认为已是最新。
+- 已发布的 Release 和标签不要删除或改名：用户端的更新检查与下载链接都指向它们。
 
 ### 签名
 
@@ -221,7 +227,10 @@ VERSION_NAME=1.2.6
 
 ### CI
 
-`.github/workflows/android-release.yml`：`workflow_dispatch` 或推送 `v*` 标签时构建 Release APK，产物上传为 `jm-mobile-release` artifact（保留 14 天）。需要仓库 Secrets：`JM_RELEASE_KEYSTORE_BASE64`（keystore 的 base64）、`JM_RELEASE_STORE_PASSWORD`、`JM_RELEASE_KEY_ALIAS`、`JM_RELEASE_KEY_PASSWORD`。
+`.github/workflows/android-release.yml`：推送 `v*` 标签或手动 `workflow_dispatch` 时构建 Release APK，构建成功后自动发布到 GitHub Releases（标签 `v{VERSION_NAME}`，资产为 `jm-mobile_v*_*.apk`），同时上传 `jm-mobile-release` artifact（保留 14 天）。需要仓库 Secrets：`JM_RELEASE_KEYSTORE_BASE64`（keystore 的 base64）、`JM_RELEASE_STORE_PASSWORD`、`JM_RELEASE_KEY_ALIAS`、`JM_RELEASE_KEY_PASSWORD`。
+
+- 发布步骤 `Publish GitHub release` 只在 `main` 分支或 `v*` 标签上执行；在分支上验证构建只产出 artifact，不会创建标签和 Release。
+- 同名 Release 已存在时更新说明并覆盖 APK（`--clobber`），重复构建同一版本不会失败。
 
 - 修 CI 时优先在分支上 `gh workflow run ... --ref <branch>` 验证，再合入 `main`。
 - 不要为了「让流水线变绿」而放宽 `JM_REQUIRE_RELEASE_SIGNING` 或使用 debug 签名。
@@ -239,7 +248,7 @@ VERSION_NAME=1.2.6
 
 - **R8 keep 规则**：`proguard-rules.pro` 按整包 keep 了 `data.models`、`retrofit.model`、`ui.models`、`utils`、`database`、`store`、`repository`、`storage`、`di`。新增包若被 Gson / Koin / 反射访问，必须补规则，否则只在 release 崩。
 - **图片解码**：阅读页依赖原始尺寸解码与 `cacheDir/pic_decode/{comicId}` 缓存，改动 `ComicPicImageState` 时注意扰乱还原与白线问题。
-- **版本号**：`app/build.gradle.kts` 中 `VERSION_CODE` 走 `toIntOrNull()` 且无默认值，非法值不会报错而是静默变空。
+- **版本号**：`app/build.gradle.kts` 中 `VERSION_CODE` 走 `toIntOrNull()` 且无默认值，非法值不会报错而是静默变空。应用内更新检查读 `releases/latest`（仓库地址常量在 `utils/AppUpdateVersion.kt`），发版忘了升 `VERSION_NAME` 时用户永远看不到更新提示；换仓库也要同步改那里的常量。
 - **Compose Preview**：页面强依赖 Koin 与网络，`@Preview` 只适合纯展示型组件。
 - **依赖镜像**：本地走阿里云镜像，CI 走官方仓库；新增依赖时确认两边都能解析。
 
@@ -250,5 +259,6 @@ VERSION_NAME=1.2.6
 - [ ] 改动构建脚本 / R8 / workflow 时 `:app:assembleRelease` 通过
 - [ ] `git status` 无密钥、APK、构建产物、临时文件
 - [ ] 提交信息符合第 7 节，分支命名符合规范
-- [ ] `CHANGELOG` 与 `README` 在需要时已更新（面向用户的变更写 CHANGELOG）
+- [ ] 发版时 `version.properties` 的 `VERSION_CODE` / `VERSION_NAME` 已递增，Release 标签为 `v{VERSION_NAME}`
+- [ ] `CHANGELOG.md`（若存在）与 `README` 在需要时已更新（面向用户的变更写 CHANGELOG）
 - [ ] 无法验证的部分（真机观感、特定设备行为）在交付说明中明确写出
