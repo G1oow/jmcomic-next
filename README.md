@@ -424,7 +424,47 @@ APK 输出文件名会带上版本号和 Git 短 hash：
 jm-mobile_v{versionName}_{gitHash}.apk
 ```
 
-仓库包含 GitHub Actions 发布流程 `.github/workflows/release.yml`，在推送 `v*.*.*` 标签时构建 Release APK 并创建草稿 Release。当前工作流里解码签名文件的文件名和 Gradle 参数中的文件名不一致：前者写入 `release-key.jks`，后者使用 `release.jks`。如果要启用自动发布，需要先统一这两个文件名，并配置对应的签名密钥 Secrets。
+### 发布签名
+
+`release` 变体使用项目自己的签名密钥。配置来源按优先级为 `secrets.properties`（本地，已在 `.gitignore` 中忽略）或同名环境变量：
+
+| 键 | 说明 |
+| --- | --- |
+| `JM_RELEASE_STORE_FILE` | keystore 路径，建议放在仓库之外 |
+| `JM_RELEASE_STORE_PASSWORD` | keystore 口令 |
+| `JM_RELEASE_KEY_ALIAS` | 密钥别名 |
+| `JM_RELEASE_KEY_PASSWORD` | 密钥口令，缺省时回退到 `JM_RELEASE_STORE_PASSWORD` |
+| `JM_REQUIRE_RELEASE_SIGNING` | 设为 `true` 时，缺少上述配置直接让构建失败 |
+
+生成一份固定密钥（放在仓库外，务必离线备份）：
+
+```bash
+keytool -genkeypair -v -keystore jm-release.jks -alias jm \
+  -keyalg RSA -keysize 2048 -validity 10000 \
+  -storepass <口令> -keypass <口令> \
+  -dname "CN=JMcomic Next, OU=Android, O=G1oow, C=CN"
+```
+
+未配置签名时，`release` 变体会回退到 debug 签名并打印警告。debug 密钥由构建机在首次构建时自动生成，**每台机器、每次 CI 运行都不同**，因此这类产物只能本地自用，不能用于分发，也无法覆盖安装其他机器构建的包。
+
+### 自动构建
+
+`.github/workflows/android-release.yml` 在 `workflow_dispatch` 或推送 `v*` 标签时构建 Release APK 并上传 artifact。CI 需要配置以下仓库 Secrets：
+
+| Secret | 说明 |
+| --- | --- |
+| `JM_RELEASE_KEYSTORE_BASE64` | keystore 文件的 base64 内容 |
+| `JM_RELEASE_STORE_PASSWORD` | keystore 口令 |
+| `JM_RELEASE_KEY_ALIAS` | 密钥别名 |
+| `JM_RELEASE_KEY_PASSWORD` | 密钥口令 |
+
+生成 base64：
+
+```bash
+base64 -w0 jm-release.jks > jm-release.b64
+```
+
+工作流会把密钥还原到 `$RUNNER_TEMP/jm-release.jks` 并设置 `JM_REQUIRE_RELEASE_SIGNING=true`；缺少密钥时构建直接失败，避免再产出签名不稳定的“发布包”。
 
 ## 开发说明
 
@@ -483,8 +523,7 @@ AI 对话依赖上游服务状态、Cookie 和设备标识。当前仓库中相�
 - `DownloadComic.status` 注释只写了 `pending || downloading || complete`，DAO 和 Worker 实际还会使用 `error`、`paused` 等状态，后续可统一为枚举或 sealed class。
 - `Coil` 磁盘缓存配置注释写的是 `200MB`，实际代码为 `1024L * 1024 * 1024`，即约 1GB。
 - `version.properties` 中的 `VERSION_CODE` 当前不是整数，如果构建时报版本号错误，需要按 Android 规范改为整数。
-- `.github/workflows/release.yml` 中签名文件名存在不一致，启用自动发布前需要修正。
-- Release 构建目前仍使用 debug signingConfig，正式分发前应改为 release 签名配置。
+- Release 签名依赖本地 `secrets.properties` 或 CI Secrets（见“发布签名”）。未配置时会回退 debug 签名，产物无法覆盖安装他人构建的包；签名密钥一旦丢失，就无法再签出可覆盖升级的同包名 APK，务必离线备份。
 
 ## 二次开源说明
 

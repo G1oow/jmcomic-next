@@ -47,6 +47,36 @@ kotlin {
     }
 }
 
+// 发布签名配置：优先读 secrets.properties（本地，不入库），其次读同名环境变量（CI）。
+// JM_RELEASE_KEY_PASSWORD 缺省时回退到 store 口令。
+val secretsProps = Properties().apply {
+    val file = rootProject.file("secrets.properties")
+    if (file.exists()) {
+        file.inputStream().use { load(it) }
+    }
+}
+
+fun secret(name: String): String? =
+    (secretsProps.getProperty(name) ?: System.getenv(name))?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile: java.io.File? = secret("JM_RELEASE_STORE_FILE")?.let { rootProject.file(it) }
+val releaseStorePassword: String? = secret("JM_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias: String? = secret("JM_RELEASE_KEY_ALIAS")
+val releaseKeyPassword: String? = secret("JM_RELEASE_KEY_PASSWORD") ?: releaseStorePassword
+
+val hasReleaseSigning: Boolean =
+    releaseStoreFile != null && releaseStoreFile.exists() &&
+        releaseStorePassword != null && releaseKeyAlias != null
+
+// CI 上设置 JM_REQUIRE_RELEASE_SIGNING=true：缺少签名配置直接失败，避免产出 debug 签名的“发布包”。
+if (secret("JM_REQUIRE_RELEASE_SIGNING")?.toBoolean() == true && !hasReleaseSigning) {
+    throw GradleException(
+        "缺少发布签名配置。请提供 JM_RELEASE_STORE_FILE / JM_RELEASE_STORE_PASSWORD / " +
+            "JM_RELEASE_KEY_ALIAS（可选 JM_RELEASE_KEY_PASSWORD），" +
+            "来源为 secrets.properties 或同名环境变量。当前 keystore 路径: ${releaseStoreFile ?: "未设置"}"
+    )
+}
+
 android {
     namespace = "com.par9uet.jm"
     compileSdk = 36
@@ -65,11 +95,30 @@ android {
         }
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = releaseStoreFile
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
             isShrinkResources = true
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "JM: 未配置发布签名（JM_RELEASE_STORE_FILE / JM_RELEASE_STORE_PASSWORD / " +
+                        "JM_RELEASE_KEY_ALIAS），release 变体回退到 debug 签名，产物不可用于分发。"
+                )
+                signingConfigs.getByName("debug")
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
