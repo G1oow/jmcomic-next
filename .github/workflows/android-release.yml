@@ -118,9 +118,10 @@ jobs:
 
           changelog=""
           if [ -f CHANGELOG.md ]; then changelog=CHANGELOG.md; elif [ -f CHANGELOG ]; then changelog=CHANGELOG; fi
-          if [ -n "$changelog" ] && grep -qE "^#+ *v${VERSION_NAME}( |$)" "$changelog"; then
+          if [ -n "$changelog" ] && grep -qE "^#+ *v${VERSION_NAME}( |\r?$)" "$changelog"; then
             echo >> "$notes"
-            awk -v pat="^#+ *v${VERSION_NAME}( |$)" '
+            awk -v pat="^#+ *v${VERSION_NAME}( |\r?$)" '
+              sub(/\r$/, "")
               $0 ~ pat { inside = 1; next }
               inside && /^#+ / { exit }
               inside { print }
