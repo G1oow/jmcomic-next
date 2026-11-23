@@ -334,6 +334,16 @@ fun CheckUpdateScreen(
         downloadState.savedPath.isNotEmpty() &&
         File(downloadState.savedPath).exists()
 
+    // 下载完成后自动拉起安装器；同一个安装包只拉起一次，避免重组时反复弹安装界面。
+    var autoInstallPath by remember { mutableStateOf("") }
+    LaunchedEffect(downloadState.status, downloadState.savedPath) {
+        if (downloadState.status != AppUpdateDownloadStatus.Completed) return@LaunchedEffect
+        val path = downloadState.savedPath
+        if (path.isBlank() || path == autoInstallPath || !File(path).exists()) return@LaunchedEffect
+        autoInstallPath = path
+        installApk(context, path)
+    }
+
     CommonScaffold(title = "检查更新") {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

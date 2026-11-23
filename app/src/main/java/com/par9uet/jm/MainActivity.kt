@@ -13,6 +13,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
+import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.runtime.CompositionLocalProvider
@@ -20,7 +21,9 @@ import androidx.compose.ui.unit.Dp
 import com.par9uet.jm.ui.theme.AppTheme
 import com.par9uet.jm.ui.theme.LocalAppMotion
 import com.par9uet.jm.ui.theme.rememberAppMotionPolicy
+import com.par9uet.jm.utils.EXTRA_UPDATE_SAVED_PATH
 import com.par9uet.jm.utils.VolumeKeyPageTurnDispatcher
+import com.par9uet.jm.utils.installApk
 
 class MainActivity : FragmentActivity() {
     private var privacyCover: View? = null
@@ -38,6 +41,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        installFromNotification(intent)
         // Keep task previews and screenshots from exposing the last visible page.
         window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
@@ -52,6 +56,24 @@ class MainActivity : FragmentActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        installFromNotification(intent)
+    }
+
+    /**
+     * 「更新包已下载完成」通知点进来时直接拉起安装器。
+     *
+     * 之前通知里塞的 path extra 没人消费，点通知只会打开首页；这里按路径直接安装，
+     * 不依赖检查更新页的内存状态（进程被杀后下载状态就没了）。
+     */
+    private fun installFromNotification(intent: Intent?) {
+        val savedPath = intent?.getStringExtra(EXTRA_UPDATE_SAVED_PATH).orEmpty()
+        if (savedPath.isBlank()) return
+        intent?.removeExtra(EXTRA_UPDATE_SAVED_PATH)
+        installApk(this, savedPath)
     }
 
     override fun onPause() {
