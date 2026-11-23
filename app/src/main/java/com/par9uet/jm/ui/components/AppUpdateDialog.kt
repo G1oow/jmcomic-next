@@ -4,9 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material3.AlertDialog
@@ -21,6 +18,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.par9uet.jm.store.AppRelease
 import com.par9uet.jm.store.AppUpdateDownloadManager
@@ -28,7 +27,6 @@ import com.par9uet.jm.store.AppUpdateDownloadRequest
 import com.par9uet.jm.store.AppUpdateDownloadState
 import com.par9uet.jm.store.AppUpdateDownloadStatus
 import com.par9uet.jm.store.formatBytes
-import com.par9uet.jm.utils.MarkdownText
 import com.par9uet.jm.utils.installApk
 import org.koin.compose.getKoin
 import java.io.File
@@ -164,18 +162,27 @@ fun AppUpdateDialog(
     )
 }
 
-/** 发布说明：只给固定高度，正文过长时内部滚动。 */
+/**
+ * 发布说明。
+ *
+ * Material3 的 [AlertDialog] 正文本身包在 `verticalScroll` 里，这里绝不能再放可滚动容器
+ * （包括自带 verticalScroll 的 MarkdownText），否则内层会被无限高度测量并抛出
+ * "Vertically scrollable component was measured with an infinity maximum height constraints"。
+ */
 @Composable
 private fun UpdateNotes(release: AppRelease) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(max = 260.dp)
-            .verticalScroll(rememberScrollState()),
-    ) {
-        MarkdownText(
-            markdown = release.body.ifBlank { release.name.ifBlank { "GitHub 上发布了新版本。" } },
-            modifier = Modifier.fillMaxWidth(),
+    val uriHandler = LocalUriHandler.current
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = release.body.ifBlank { release.name.ifBlank { "GitHub 上发布了新版本。" } },
+            style = MaterialTheme.typography.bodyMedium,
+            maxLines = 10,
+            overflow = TextOverflow.Ellipsis,
         )
+        if (release.url.isNotBlank()) {
+            TextButton(onClick = { runCatching { uriHandler.openUri(release.url) } }) {
+                Text("在 GitHub 查看完整说明")
+            }
+        }
     }
 }
