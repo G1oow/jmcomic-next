@@ -135,7 +135,8 @@ private fun CapsuleNavRow(
                     modifier = Modifier
                         .size(width = ChromeCapsuleSlotWidth, height = ChromeCapsuleItemHeight)
                         .clip(ChromeCapsuleStadium)
-                        .clickable { onNavigate(item.route) }
+                        // 不要点击水波纹：选中 pill 的滑动本身就是反馈，多一层涟漪反而重。
+                        .clickable(interactionSource = null, indication = null) { onNavigate(item.route) }
                         .semantics { contentDescription = item.label },
                     contentAlignment = Alignment.Center,
                 ) {

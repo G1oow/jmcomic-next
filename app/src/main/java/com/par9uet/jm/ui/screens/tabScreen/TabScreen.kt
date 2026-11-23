@@ -1,5 +1,6 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -83,17 +84,10 @@ fun TabScreen(
                 if (useNavigationRail) null else TabFloatingChrome(chromeState, navigationBarInset)
             }
             CompositionLocalProvider(LocalTabFloatingChrome provides floatingChrome) {
-                // 有列表头部的页面自己带状态栏内边距，其余页面在这里补回，避免内容钻到系统栏下。
-                val pageRendersHeader = when (currentRoute) {
-                    "home", "user" -> true
-                    "collect" -> isLogin
-                    else -> false
-                }
                 // 底层：页面内容。顶栏由各页列表自己在首位渲染，这里不再有固定栏位。
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(if (pageRendersHeader) Modifier else Modifier.statusBarsPadding())
                         .nestedScroll(chromeState.nestedScrollConnection)
                 ) {
                     if (useNavigationRail) {
@@ -115,7 +109,10 @@ fun TabScreen(
                             UserScreen()
                         }
                         composable("ai") {
-                            AiChatScreen()
+                            // 聊天页自己不管系统栏，内边距放在 destination 内：切页时外层布局不动。
+                            Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+                                AiChatScreen()
+                            }
                         }
                         composable("collect") {
                             if (isLogin) {
@@ -123,11 +120,13 @@ fun TabScreen(
                                     useScaffold = false,
                                 )
                             } else {
-                                // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
-                                LoginRequiredPlaceholder(
-                                    message = "登录后可查看收藏、历史与签到",
-                                    onLogin = { mainNavController.navigate("login") },
-                                )
+                                Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+                                    // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
+                                    LoginRequiredPlaceholder(
+                                        message = "登录后可查看收藏、历史与签到",
+                                        onLogin = { mainNavController.navigate("login") },
+                                    )
+                                }
                             }
                         }
                     }

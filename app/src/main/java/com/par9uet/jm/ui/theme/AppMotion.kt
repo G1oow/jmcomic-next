@@ -69,16 +69,29 @@ fun rememberAppMotionPolicy(): AppMotionPolicy {
     return appMotionPolicy(Build.VERSION.SDK_INT, scale)
 }
 
-/** Animate one layer when a new page arrives; keep the grid and scroll state mounted. */
+/**
+ * Animate one layer when a new page arrives; keep the grid and scroll state mounted.
+ *
+ * The first key of a fresh composition counts as already shown: re-entering a tab must not
+ * replay the fade, otherwise every tab switch re-rasterizes the whole grid with an alpha
+ * layer and the page looks like it shakes and repositions itself.
+ */
 @Composable
 fun Modifier.revealComicPage(contentKey: Any?, ready: Boolean): Modifier {
     val motion = LocalAppMotion.current
-    val alpha = remember(contentKey) { Animatable(if (ready && motion.enabled) 0f else 1f) }
+    val alpha = remember { Animatable(1f) }
+    var shownKey by remember { mutableStateOf(contentKey) }
     LaunchedEffect(contentKey, ready, motion.enabled) {
-        if (!motion.enabled) alpha.snapTo(1f)
-        else if (ready) {
-            alpha.snapTo(0f)
-            alpha.animateTo(1f, tween(motion.exitMs, easing = motionEasing))
+        when {
+            !motion.enabled -> alpha.snapTo(1f)
+            // 数据还没到就先按兵不动，等 ready 再决定播不播。
+            !ready -> Unit
+            shownKey == contentKey -> Unit
+            else -> {
+                shownKey = contentKey
+                alpha.snapTo(0f)
+                alpha.animateTo(1f, tween(motion.exitMs, easing = motionEasing))
+            }
         }
     }
     return graphicsLayer {
