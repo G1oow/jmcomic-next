@@ -1,8 +1,9 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
-import androidx.compose.animation.core.Spring
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -36,8 +38,8 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import com.par9uet.jm.R
 import com.par9uet.jm.store.LocalSettingManager
 import org.koin.compose.getKoin
-
 /** 底栏胶囊里的一个入口。 */
+@Immutable
 private class CapsuleNavItem(
     val route: String,
     val label: String,
@@ -63,12 +65,16 @@ fun BottomNavigationBarComponent(
     val localSetting by localSettingManager.localSettingState.collectAsState()
     if (currentRoute == "login") return
 
-    fun navigate(name: String) {
-        if (name == currentRoute) return
-        tabNavController.navigate(name) {
-            popUpTo(tabNavController.graph.findStartDestination().id) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+    // 稳定回调：每次重组给底栏塞新 lambda 会让每个入口白白重组一次。
+    val onNavigate: (String) -> Unit = remember(tabNavController, currentRoute) {
+        { name ->
+            if (name != currentRoute) {
+                tabNavController.navigate(name) {
+                    popUpTo(tabNavController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
         }
     }
 
@@ -87,7 +93,7 @@ fun BottomNavigationBarComponent(
         CapsuleNavRow(
             items = items,
             currentRoute = currentRoute,
-            onNavigate = { navigate(it) },
+            onNavigate = onNavigate,
         )
     }
 }
@@ -99,13 +105,13 @@ private fun CapsuleNavRow(
     onNavigate: (String) -> Unit,
 ) {
     val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
+    val colorScheme = MaterialTheme.colorScheme
+    // 颜色只算一次：copy() 每次重组都会生成新的 Color，让修饰符白白重建。
+    val pillColor = remember(colorScheme.primary) { colorScheme.primary.copy(alpha = 0.11f) }
     // 选中 pill 在槽位之间弹簧滑动：pill 铺满整个槽位，胶囊胖瘦比例由槽宽统一决定。
     val pillOffset by animateDpAsState(
         targetValue = ChromeCapsuleSlotWidth * selectedIndex,
-        animationSpec = spring(
-            dampingRatio = 0.85f,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
+        animationSpec = spring(dampingRatio = 0.9f, stiffness = 1_200f),
         label = "capsuleSelectedPill",
     )
     Box(modifier = Modifier.padding(ChromeCapsuleInnerInset)) {
@@ -114,16 +120,17 @@ private fun CapsuleNavRow(
                 .offset(x = pillOffset)
                 .size(width = ChromeCapsuleSlotWidth, height = ChromeCapsuleItemHeight)
                 .clip(ChromeCapsuleStadium)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f))
+                .background(pillColor)
         )
         Row {
             items.forEachIndexed { index, item ->
                 val selected = index == selectedIndex
-                val tint = if (selected) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                // 图标颜色跟着 pill 一起过渡，避免切换时颜色瞬跳。
+                val tint by animateColorAsState(
+                    targetValue = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant,
+                    animationSpec = tween(durationMillis = 160),
+                    label = "capsuleIconTint",
+                )
                 Box(
                     modifier = Modifier
                         .size(width = ChromeCapsuleSlotWidth, height = ChromeCapsuleItemHeight)

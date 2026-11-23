@@ -13,6 +13,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -64,10 +65,13 @@ fun TabScreen(
             }
         }
     }
+    // 稳定 header lambda：否则每次 TabScreen 重组都会让三个列表的头部重新组合。
+    val tabHeader: @Composable () -> Unit = remember(statusBarInset) {
+        { TabHeader(inset = statusBarInset) }
+    }
     CompositionLocalProvider(
         LocalTabNavController provides tabNavController,
-        // 顶栏交给页面放进列表首位：它和内容处在同一条滚动流，滑动时一起滚走。
-        LocalTabHeader provides { TabHeader(inset = statusBarInset) },
+        LocalTabHeader provides tabHeader,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val useNavigationRail = maxWidth >= 700.dp

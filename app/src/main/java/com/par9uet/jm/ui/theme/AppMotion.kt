@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,26 +28,28 @@ import androidx.compose.ui.platform.LocalContext
 internal val motionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 data class AppMotionPolicy(val enabled: Boolean, val enterMs: Int, val exitMs: Int) {
+    /**
+     * 只让进入页做位移，退出页纯淡出：两个页面同时朝不同方向滑动会让切换看着发飘，
+     * 也等于每次切换多画一层位移。位移距离取屏宽的 1/12、封顶 72dp，
+     * 只用来交代方向，不喧宾夺主。
+     */
     fun enter(back: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
         fadeIn(tween(enterMs, easing = motionEasing)) +
             slideInHorizontally(tween(enterMs, easing = motionEasing)) { width ->
-                (width / 14).coerceAtMost(96) * if (back) -1 else 1
+                (width / 12).coerceAtMost(72) * if (back) -1 else 1
             }
 
     fun exit(back: Boolean = false): ExitTransition = if (!enabled) ExitTransition.None else
-        fadeOut(tween(exitMs, easing = motionEasing)) +
-            slideOutHorizontally(tween(exitMs, easing = motionEasing)) { width ->
-                (width / 18).coerceAtMost(72) * if (back) 1 else -1
-            }
+        fadeOut(tween(exitMs, easing = motionEasing))
 }
 
 internal fun appMotionPolicy(api: Int, systemScale: Float): AppMotionPolicy = when {
     systemScale <= 0f -> AppMotionPolicy(false, 0, 0)
-    api <= 23 -> AppMotionPolicy(true, 160, 120)
-    else -> AppMotionPolicy(true, 220, 160)
+    api <= 23 -> AppMotionPolicy(true, 160, 110)
+    else -> AppMotionPolicy(true, 220, 140)
 }
 
-val LocalAppMotion = staticCompositionLocalOf { AppMotionPolicy(true, 220, 160) }
+val LocalAppMotion = staticCompositionLocalOf { AppMotionPolicy(true, 220, 140) }
 
 /** One observer at the app root; cards never register per-item system observers. */
 @Composable
