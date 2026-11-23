@@ -13,7 +13,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,7 +29,10 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
+import com.par9uet.jm.ui.components.LocalTabChromeActive
+import com.par9uet.jm.ui.components.LocalTabChromePager
 import com.par9uet.jm.ui.components.LoginRequiredPlaceholder
+import com.par9uet.jm.ui.components.TabChromePager
 import com.par9uet.jm.ui.screens.AiChatScreen
 import com.par9uet.jm.ui.screens.HomeScreen
 import com.par9uet.jm.ui.screens.LocalMainNavController
@@ -65,6 +70,17 @@ fun TabScreen(
             }
         }
     }
+    // 页面把底部分页交给胶囊渲染：胶囊会盖住页面底部，分页条放这里才不被遮。
+    var registeredPager by remember { mutableStateOf<Pair<Any, TabChromePager>?>(null) }
+    val setPager: (Any, TabChromePager?) -> Unit = remember {
+        { owner, pager ->
+            if (pager == null) {
+                if (registeredPager?.first == owner) registeredPager = null
+            } else {
+                registeredPager = owner to pager
+            }
+        }
+    }
     // 稳定 header lambda：否则每次 TabScreen 重组都会让三个列表的头部重新组合。
     val tabHeader: @Composable () -> Unit = remember(statusBarInset) {
         { TabHeader(inset = statusBarInset) }
@@ -72,6 +88,8 @@ fun TabScreen(
     CompositionLocalProvider(
         LocalTabNavController provides tabNavController,
         LocalTabHeader provides tabHeader,
+        LocalTabChromeActive provides true,
+        LocalTabChromePager provides setPager,
     ) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val useNavigationRail = maxWidth >= 700.dp
@@ -131,6 +149,7 @@ fun TabScreen(
                 BottomNavigationBarComponent(
                     chromeState = chromeState,
                     inset = navigationBarInset,
+                    pager = registeredPager?.second,
                     modifier = Modifier.align(Alignment.BottomCenter),
                 )
             }

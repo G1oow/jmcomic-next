@@ -19,7 +19,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,6 +74,18 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
             gridState.scrollToItem(0)
             previousPage.intValue = page
         }
+    }
+    // tab 内页面底部被悬浮胶囊盖住：分页条交给胶囊渲染，这里不再自己画。
+    val chromeActive = LocalTabChromeActive.current
+    val registerPager = LocalTabChromePager.current
+    val pagerOwner = remember { Any() }
+    // 分页关闭时也要注册 null，否则胶囊会留着上一页的分页行。
+    val chromePager = remember(pageState, onPageChange) {
+        pageState?.takeIf { it.enabled }?.let { TabChromePager(it, onPageChange) }
+    }
+    if (chromeActive) {
+        SideEffect { registerPager(pagerOwner, chromePager) }
+        DisposableEffect(pagerOwner) { onDispose { registerPager(pagerOwner, null) } }
     }
     val itemsContent: @Composable () -> Unit = {
         LazyVerticalGrid(
@@ -168,7 +182,7 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
             Box(modifier = Modifier.weight(1f).revealComicPage(
                 pageState?.page to firstKey, ready = firstKey != null && !isRefreshing,
             )) { itemsContent() }
-            if (pageState?.enabled == true) {
+            if (pageState?.enabled == true && !chromeActive) {
                 ComicPaginationBar(state = pageState, onPageChange = onPageChange)
             }
         }

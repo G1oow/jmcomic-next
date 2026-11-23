@@ -38,7 +38,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -63,9 +65,12 @@ import com.par9uet.jm.ui.components.Comic
 import com.par9uet.jm.ui.components.ComicCoverPreloadEffect
 import com.par9uet.jm.ui.components.ComicPaginationBar
 import com.par9uet.jm.ui.components.HomeCategorySortDialog
+import com.par9uet.jm.ui.components.LocalTabChromeActive
+import com.par9uet.jm.ui.components.LocalTabChromePager
 import com.par9uet.jm.ui.components.rememberComicListPagination
 import com.par9uet.jm.ui.components.ComicSkeleton
 import com.par9uet.jm.ui.components.ScrollToTopButton
+import com.par9uet.jm.ui.components.TabChromePager
 import com.par9uet.jm.ui.components.TabSkeleton
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
 import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
@@ -243,6 +248,26 @@ fun HomeScreen(
             comicList.size,
             selectedTabIndex to allExcludedTags,
         )
+        // tab 内页面底部被悬浮胶囊盖住：分页条交给胶囊渲染，页面里不再自己画。
+        val chromeActive = LocalTabChromeActive.current
+        val registerPager = LocalTabChromePager.current
+        val pagerOwner = remember { Any() }
+        val homePagerState = pagination.state
+        // 分页关闭时也要注册 null，否则胶囊会留着上一页的分页行。
+        val chromePager = remember(homePagerState) {
+            if (homePagerState.enabled) {
+                TabChromePager(homePagerState) { page ->
+                    pagination.onPageChange(page)
+                    scope.launch { gridState.scrollToItem(0) }
+                }
+            } else {
+                null
+            }
+        }
+        if (chromeActive) {
+            SideEffect { registerPager(pagerOwner, chromePager) }
+            DisposableEffect(pagerOwner) { onDispose { registerPager(pagerOwner, null) } }
+        }
         val pageComics = comicList.drop(pagination.firstIndex).take(pagination.limit)
         val nextPageComics = remember(comicList, pagination.state.page, pagination.state.hasNext) {
             if (pagination.state.hasNext) {
@@ -359,10 +384,16 @@ fun HomeScreen(
                 gridState = gridState,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    // 底栏胶囊浮在内容上，按钮要跟着让开它和分页行。
+                    .padding(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = 16.dp,
+                        bottom = if (chromeActive) 112.dp else 16.dp,
+                    ),
             )
         }
-        if (pagination.state.enabled) {
+        if (pagination.state.enabled && !chromeActive) {
             ComicPaginationBar(
                 state = pagination.state,
                 onPageChange = { page ->

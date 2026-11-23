@@ -7,7 +7,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -19,6 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationRail
 import androidx.compose.material3.NavigationRailItem
 import androidx.compose.material3.NavigationRailItemDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
@@ -31,13 +37,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.par9uet.jm.R
 import com.par9uet.jm.store.LocalSettingManager
+import com.par9uet.jm.ui.components.TabChromePager
 import org.koin.compose.getKoin
+
 /** 底栏胶囊里的一个入口。 */
 @Immutable
 private class CapsuleNavItem(
@@ -56,6 +65,7 @@ private class CapsuleNavItem(
 fun BottomNavigationBarComponent(
     chromeState: TabChromeState,
     inset: Dp,
+    pager: TabChromePager? = null,
     modifier: Modifier = Modifier,
     localSettingManager: LocalSettingManager = getKoin().get(),
 ) {
@@ -90,11 +100,19 @@ fun BottomNavigationBarComponent(
     }
 
     FloatingBottomCapsule(state = chromeState, inset = inset, modifier = modifier) {
-        CapsuleNavRow(
-            items = items,
-            currentRoute = currentRoute,
-            onNavigate = onNavigate,
-        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            if (pager != null) {
+                CapsulePagerRow(
+                    pager = pager,
+                    rowWidth = ChromeCapsuleSlotWidth * items.size + ChromeCapsuleInnerInset * 2,
+                )
+            }
+            CapsuleNavRow(
+                items = items,
+                currentRoute = currentRoute,
+                onNavigate = onNavigate,
+            )
+        }
     }
 }
 
@@ -157,6 +175,46 @@ private fun CapsuleNavRow(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * 胶囊里的分页行：上一页 / 页码 / 下一页。
+ *
+ * 页面底部的分页条会被悬浮胶囊盖住，所以在 tab 内改由胶囊渲染这一行，
+ * 高度压到和导航行同一段，整颗胶囊仍然是一个 stadium。
+ */
+@Composable
+private fun CapsulePagerRow(pager: TabChromePager, rowWidth: Dp) {
+    val state = pager.state
+    Row(
+        modifier = Modifier
+            .width(rowWidth)
+            .padding(start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        TextButton(
+            onClick = { pager.onPageChange(state.page - 1) },
+            enabled = !state.isLoading && state.page > 1,
+            modifier = Modifier.heightIn(min = 36.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+        ) {
+            Text("上一页", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+        Text(
+            text = state.pageCount?.let { "${state.page} / $it" } ?: "第 ${state.page} 页",
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(
+            onClick = { pager.onPageChange(state.page + 1) },
+            enabled = !state.isLoading && state.hasNext,
+            modifier = Modifier.heightIn(min = 36.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+        ) {
+            Text("下一页", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
     }
 }
