@@ -1,6 +1,7 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.rounded.Psychology
@@ -15,7 +16,9 @@ import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -25,6 +28,8 @@ import org.koin.compose.getKoin
 
 @Composable
 fun BottomNavigationBarComponent(
+    chromeState: TabChromeState,
+    inset: Dp,
     localSettingManager: LocalSettingManager = getKoin().get()
 ) {
     val tabNavController = LocalTabNavController.current
@@ -48,56 +53,60 @@ fun BottomNavigationBarComponent(
     )
 
     AnimatedVisibility(visible = currentRoute != "login") {
-        NavigationBar(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 3.dp
-        ) {
-            NavigationBarItem(
-                colors = itemColors,
-                icon = {
-                    Icon(
-                        painterResource(R.drawable.home_icon),
-                        contentDescription = "Home"
-                    )
-                },
-                selected = currentRoute == "home",
-                onClick = { navigate("home") }
-            )
-            if (localSetting.showAiEntry) {
+        FloatingChromeCapsule(state = chromeState, fromTop = false, inset = inset) {
+            NavigationBar(
+                // 背景与系统栏内边距都由外层悬浮胶囊提供，底栏自身保持透明。
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp,
+                windowInsets = WindowInsets(0, 0, 0, 0),
+            ) {
                 NavigationBarItem(
                     colors = itemColors,
                     icon = {
                         Icon(
-                            Icons.Rounded.Psychology,
-                            contentDescription = "AI"
+                            painterResource(R.drawable.home_icon),
+                            contentDescription = "Home"
                         )
                     },
-                    selected = currentRoute == "ai",
-                    onClick = { navigate("ai") }
+                    selected = currentRoute == "home",
+                    onClick = { navigate("home") }
+                )
+                if (localSetting.showAiEntry) {
+                    NavigationBarItem(
+                        colors = itemColors,
+                        icon = {
+                            Icon(
+                                Icons.Rounded.Psychology,
+                                contentDescription = "AI"
+                            )
+                        },
+                        selected = currentRoute == "ai",
+                        onClick = { navigate("ai") }
+                    )
+                }
+                NavigationBarItem(
+                    colors = itemColors,
+                    icon = {
+                        Icon(
+                            Icons.Filled.Bookmark,
+                            contentDescription = "Collect"
+                        )
+                    },
+                    selected = currentRoute == "collect",
+                    onClick = { navigate("collect") }
+                )
+                NavigationBarItem(
+                    colors = itemColors,
+                    icon = {
+                        Icon(
+                            painterResource(R.drawable.person_icon),
+                            contentDescription = "User"
+                        )
+                    },
+                    selected = currentRoute == "user",
+                    onClick = { navigate("user") }
                 )
             }
-            NavigationBarItem(
-                colors = itemColors,
-                icon = {
-                    Icon(
-                        Icons.Filled.Bookmark,
-                        contentDescription = "Collect"
-                    )
-                },
-                selected = currentRoute == "collect",
-                onClick = { navigate("collect") }
-            )
-            NavigationBarItem(
-                colors = itemColors,
-                icon = {
-                    Icon(
-                        painterResource(R.drawable.person_icon),
-                        contentDescription = "User"
-                    )
-                },
-                selected = currentRoute == "user",
-                onClick = { navigate("user") }
-            )
         }
     }
 }

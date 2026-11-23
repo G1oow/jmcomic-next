@@ -74,26 +74,20 @@ fun TabScreen(
             Scaffold(
                 bottomBar = {
                     if (!useNavigationRail && !hideBottomNavigation) {
-                        // 上滑收起、下滑展开的底栏。
-                        CollapsingChromeSlot(
-                            state = chromeState,
-                            fromTop = false,
-                            minVisible = navigationBarInset,
-                        ) {
-                            BottomNavigationBarComponent()
-                        }
+                        // 悬浮胶囊底栏：上滑跟手收起、下滑展开。
+                        BottomNavigationBarComponent(
+                            chromeState = chromeState,
+                            inset = navigationBarInset,
+                        )
                     }
                 },
                 topBar = {
-                    // 上滑收起、下滑展开的顶栏。
-                    CollapsingChromeSlot(
-                        state = chromeState,
-                        fromTop = true,
-                        minVisible = statusBarInset,
-                    ) {
-                        TopBarComponent()
-                    }
-                }
+                    // 悬浮胶囊顶栏：上滑跟手收起、下滑展开。
+                    TopBarComponent(
+                        chromeState = chromeState,
+                        inset = statusBarInset,
+                    )
+                },
             ) { innerPadding ->
                 Row(
                     modifier = Modifier
