@@ -118,6 +118,8 @@ class EmbeddedClientManager(
             }
             .build()
         val jmClient = JmApiClient(config, clientWithCookieInjection, context.cookieManager, domainManager)
+        // v1.1.12 起初始化不再由构造函数触发，必须显式启动，否则 getBestDomain() 会一直阻塞。
+        jmClient.initializeAsync()
 
         if (legacyAndroid) {
             domainManager.setInitialized(true)

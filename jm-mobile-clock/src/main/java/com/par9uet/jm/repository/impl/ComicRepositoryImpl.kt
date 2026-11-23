@@ -1217,7 +1217,7 @@ class ComicRepositoryImpl(
             name = nickname(),
             content = content(),
             photo = photo() ?: "",
-            spoiler = spoiler(),
+            spoiler = if (spoiler()) "1" else "0",
             replys = replys().orEmpty().map { it.toCommentListItem() }
         )
     }

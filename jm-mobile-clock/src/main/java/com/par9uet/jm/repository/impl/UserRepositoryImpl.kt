@@ -348,7 +348,7 @@ class UserRepositoryImpl(
             name = name(),
             content = content(),
             photo = photo() ?: "",
-            spoiler = spoiler(),
+            spoiler = if (spoiler()) "1" else "0",
             replys = replys()?.map { it.toHistoryCommentListItem() }
         )
     }
