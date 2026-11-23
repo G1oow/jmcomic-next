@@ -69,7 +69,7 @@ jobs:
           test -n "$SDKMANAGER"
           echo "using $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
-          "$SDKMANAGER" "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Restore release keystore
         env:
@@ -89,7 +89,11 @@ jobs:
           JM_RELEASE_KEY_ALIAS: ${{ secrets.JM_RELEASE_KEY_ALIAS }}
           JM_RELEASE_KEY_PASSWORD: ${{ secrets.JM_RELEASE_KEY_PASSWORD }}
           JM_REQUIRE_RELEASE_SIGNING: 'true'
-        run: gradle :app:assembleRelease --no-daemon --stacktrace --console=plain
+        run: |
+          gradle :app:assembleRelease \
+            --build-cache \
+            -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
+            --stacktrace --console=plain
 
       # 只在 main 或 v* 标签上发布，分支上的验证构建不会产生 Release 和标签。
       - name: Publish GitHub release
