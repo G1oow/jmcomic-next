@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -61,13 +62,14 @@ import com.par9uet.jm.store.UserManager
 import com.par9uet.jm.data.models.HomeComicSwiperItem
 import com.par9uet.jm.ui.components.Comic
 import com.par9uet.jm.ui.components.ComicCoverPreloadEffect
-import com.par9uet.jm.ui.components.ComicPaginationBar
+import com.par9uet.jm.ui.components.FloatingComicPaginationCapsule
 import com.par9uet.jm.ui.components.HomeCategorySortDialog
 import com.par9uet.jm.ui.components.rememberComicListPagination
 import com.par9uet.jm.ui.components.ComicSkeleton
 import com.par9uet.jm.ui.components.ScrollToTopButton
 import com.par9uet.jm.ui.components.TabSkeleton
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.state.rememberTabIndexState
 import com.par9uet.jm.ui.viewModel.ComicViewModel
 import com.par9uet.jm.ui.viewModel.UserViewModel
@@ -230,7 +232,7 @@ fun HomeScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         val allExcludedTags = remember(localSetting.blockedTagList, localSetting.homeExcludedTags) {
             (localSetting.blockedTagList + localSetting.homeExcludedTags).distinct()
         }
@@ -252,7 +254,7 @@ fun HomeScreen(
         }
         ComicCoverPreloadEffect(nextPageComics, enabled = !homeComicState.isLoading)
         PullToRefreshBox(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             isRefreshing = homeComicState.isLoading,
             onRefresh = { comicViewModel.getHomeComic() }
         ) {
@@ -297,6 +299,10 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    // 顶栏和漫画列表同一条滚动流：滑动时一起滚出屏幕。
+                    LocalTabHeader.current?.invoke()
+                }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         HomeHeader(
@@ -358,12 +364,13 @@ fun HomeScreen(
             )
         }
         if (pagination.state.enabled) {
-            ComicPaginationBar(
+            FloatingComicPaginationCapsule(
                 state = pagination.state,
                 onPageChange = { page ->
                     pagination.onPageChange(page)
                     scope.launch { gridState.scrollToItem(0) }
                 },
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }

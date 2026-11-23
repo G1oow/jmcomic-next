@@ -13,7 +13,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,26 +28,31 @@ import androidx.compose.ui.platform.LocalContext
 internal val motionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 data class AppMotionPolicy(val enabled: Boolean, val enterMs: Int, val exitMs: Int) {
-    fun enter(back: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
+    /**
+     * 只让进入页做位移，退出页纯淡出：两个页面同时朝不同方向滑动会让切换看着发飘，
+     * 也等于每次切换多画一层位移。位移距离取屏宽的 1/12、封顶 72dp，
+     * 只用来交代方向，不喧宾夺主。
+     *
+     * @param fromLeft 目标页在导航条上靠右、是从它左边那一项点过来的时候：
+     * 页面从左边滑进来，其余情况从右边滑进来。
+     */
+    fun enter(fromLeft: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
         fadeIn(tween(enterMs, easing = motionEasing)) +
             slideInHorizontally(tween(enterMs, easing = motionEasing)) { width ->
-                (width / 14).coerceAtMost(96) * if (back) -1 else 1
+                (width / 12).coerceAtMost(72) * if (fromLeft) -1 else 1
             }
 
-    fun exit(back: Boolean = false): ExitTransition = if (!enabled) ExitTransition.None else
-        fadeOut(tween(exitMs, easing = motionEasing)) +
-            slideOutHorizontally(tween(exitMs, easing = motionEasing)) { width ->
-                (width / 18).coerceAtMost(72) * if (back) 1 else -1
-            }
+    fun exit(): ExitTransition = if (!enabled) ExitTransition.None else
+        fadeOut(tween(exitMs, easing = motionEasing))
 }
 
 internal fun appMotionPolicy(api: Int, systemScale: Float): AppMotionPolicy = when {
     systemScale <= 0f -> AppMotionPolicy(false, 0, 0)
-    api <= 23 -> AppMotionPolicy(true, 160, 120)
-    else -> AppMotionPolicy(true, 220, 160)
+    api <= 23 -> AppMotionPolicy(true, 160, 110)
+    else -> AppMotionPolicy(true, 220, 140)
 }
 
-val LocalAppMotion = staticCompositionLocalOf { AppMotionPolicy(true, 220, 160) }
+val LocalAppMotion = staticCompositionLocalOf { AppMotionPolicy(true, 220, 140) }
 
 /** One observer at the app root; cards never register per-item system observers. */
 @Composable
@@ -68,16 +72,29 @@ fun rememberAppMotionPolicy(): AppMotionPolicy {
     return appMotionPolicy(Build.VERSION.SDK_INT, scale)
 }
 
-/** Animate one layer when a new page arrives; keep the grid and scroll state mounted. */
+/**
+ * Animate one layer when a new page arrives; keep the grid and scroll state mounted.
+ *
+ * The first key of a fresh composition counts as already shown: re-entering a tab must not
+ * replay the fade, otherwise every tab switch re-rasterizes the whole grid with an alpha
+ * layer and the page looks like it shakes and repositions itself.
+ */
 @Composable
 fun Modifier.revealComicPage(contentKey: Any?, ready: Boolean): Modifier {
     val motion = LocalAppMotion.current
-    val alpha = remember(contentKey) { Animatable(if (ready && motion.enabled) 0f else 1f) }
+    val alpha = remember { Animatable(1f) }
+    var shownKey by remember { mutableStateOf(contentKey) }
     LaunchedEffect(contentKey, ready, motion.enabled) {
-        if (!motion.enabled) alpha.snapTo(1f)
-        else if (ready) {
-            alpha.snapTo(0f)
-            alpha.animateTo(1f, tween(motion.exitMs, easing = motionEasing))
+        when {
+            !motion.enabled -> alpha.snapTo(1f)
+            // 数据还没到就先按兵不动，等 ready 再决定播不播。
+            !ready -> Unit
+            shownKey == contentKey -> Unit
+            else -> {
+                shownKey = contentKey
+                alpha.snapTo(0f)
+                alpha.animateTo(1f, tween(motion.exitMs, easing = motionEasing))
+            }
         }
     }
     return graphicsLayer {

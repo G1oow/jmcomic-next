@@ -57,6 +57,7 @@ import coil.compose.AsyncImage
 import com.par9uet.jm.data.models.User
 import com.par9uet.jm.store.RemoteSettingManager
 import com.par9uet.jm.store.UserManager
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import kotlinx.coroutines.launch
 import org.koin.compose.getKoin
@@ -359,6 +360,7 @@ fun UserScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            LocalTabHeader.current?.invoke()
             val user = userState.data
             if (isLogin && user != null) {
                 UserHeader(

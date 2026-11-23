@@ -5,23 +5,28 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -34,57 +39,45 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 /**
- * 顶栏与底栏的显隐状态。
+ * 悬浮胶囊底栏的显隐状态。
  *
- * 收起进度只驱动绘制阶段的位移，不参与测量：[FloatingChromeCapsule] 的高度恒定，
- * [androidx.compose.material3.Scaffold] 的内容内边距也就不会随手指变化。拖动时页面主体
- * 既不重新测量也不会跟着上下位移，滚动量与手指位移一一对应，不会再出现「收栏时滑动被
- * 加速或减速」的手感。
- *
- * 只有手指拖动（[NestedScrollSource.UserInput]）改变进度，惯性滑动不参与，避免快速甩动
- * 列表时栏位来回抖动。
+ * 收起进度跟着手指连续变化：上滑多少就收起多少，下滑多少就展开多少，松手后再按位置和
+ * 甩动方向补一段短动画收尾。只有手指拖动（[NestedScrollSource.UserInput]）改变进度，
+ * 惯性滑动不参与，避免快速甩动列表时胶囊抖动。
  */
 @Stable
 class TabChromeState internal constructor(
     private val scope: CoroutineScope,
     private val motion: AppMotionPolicy,
-    private val fallbackDragDistancePx: Float,
+    private val dragDistancePx: Float,
     private val settleVelocityPx: Float,
+    /** 分页胶囊在场时多出来的收起行程，拖动距离按同样的量加长，跟手比例才不漂移。 */
+    private val pagerBlockPx: Float = 0f,
 ) {
     /** 0f = 完全展开，1f = 完全收起。 */
     private var progressState by mutableFloatStateOf(0f)
-
-    /** 顶栏 / 底栏容纳胶囊所需的总高度（含系统栏内边距与悬浮外边距）。 */
-    private var topTravelPx by mutableFloatStateOf(0f)
-    private var bottomTravelPx by mutableFloatStateOf(0f)
 
     private var settleJob: Job? = null
 
     /** 最近一次拖动的方向：1f 收起，-1f 展开，0f 本次手势尚未拖动。 */
     private var dragDirection = 0f
 
-    /** 供绘制阶段读取：只在 [graphicsLayer] 里读，进度变化只触发重绘。 */
+    /** 底栏胶囊上方是否还叠着一层分页胶囊，收起行程要连它一起算。 */
+    private var pagerPresentState by mutableStateOf(false)
+
+    /** 绘制阶段读取，进度变化只重绘，不重组。 */
     val progress: Float
         get() = progressState
 
-    /** 收起时需要移动的距离，等于栏位总高度，正好把胶囊推到屏幕外。 */
-    fun travelPx(fromTop: Boolean): Float =
-        (if (fromTop) topTravelPx else bottomTravelPx).takeIf { it > 0f } ?: fallbackDragDistancePx
-
-    /** 栏位测量完成后回报自身总高度。 */
-    fun updateTravel(fromTop: Boolean, travelPx: Float) {
-        if (fromTop) {
-            if (topTravelPx != travelPx) topTravelPx = travelPx
-        } else if (bottomTravelPx != travelPx) {
-            bottomTravelPx = travelPx
-        }
-    }
+    /** 底栏胶囊上方是否叠着分页胶囊，同样在绘制阶段读取。 */
+    val pagerPresent: Boolean
+        get() = pagerPresentState
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
             // available.y < 0 表示手指上滑、内容向前滚动，此时收起。
             if (source == NestedScrollSource.UserInput) dragBy(-available.y)
-            // 只观察，不消费：滚动量全部留给列表，栏位只做视觉位移。
+            // 只观察，不消费：滚动量全部留给列表，胶囊只做绘制位移。
             return Offset.Zero
         }
 
@@ -95,13 +88,13 @@ class TabChromeState internal constructor(
         }
     }
 
-    /** 切页、回到前台等场景重新展开栏位。 */
+    /** 切页、回到前台等场景重新展开胶囊。 */
     fun show() = animateTo(0f)
 
-    /** 手指滑过这段距离正好收起到底，位移与手指严格同步。 */
-    private val dragDistancePx: Float
-        get() = listOf(topTravelPx, bottomTravelPx).filter { it > 0f }.minOrNull()
-            ?: fallbackDragDistancePx
+    /** 由页面里的悬浮分页胶囊登记自己在场，好让整叠胶囊一起滑出。 */
+    fun setPagerPresent(present: Boolean) {
+        if (pagerPresentState != present) pagerPresentState = present
+    }
 
     /** [deltaPx] 为正表示收起方向：手指上滑，内容向前翻。 */
     private fun dragBy(deltaPx: Float) {
@@ -109,7 +102,9 @@ class TabChromeState internal constructor(
         settleJob?.cancel()
         settleJob = null
         dragDirection = if (deltaPx > 0f) 1f else -1f
-        val next = (progressState + deltaPx / dragDistancePx).coerceIn(0f, 1f)
+        val distancePx = dragDistancePx + if (pagerPresentState) pagerBlockPx else 0f
+        if (distancePx <= 0f) return
+        val next = (progressState + deltaPx / distancePx).coerceIn(0f, 1f)
         if (next != progressState) progressState = next
     }
 
@@ -160,68 +155,107 @@ fun rememberTabChromeState(): TabChromeState {
         TabChromeState(
             scope = scope,
             motion = motion,
-            fallbackDragDistancePx = with(density) { ChromeFallbackDragDistance.toPx() },
-            settleVelocityPx = with(density) { ChromeSettleVelocity.toPx() },
+            dragDistancePx = with(density) { ChromeCapsuleDragDistance.toPx() },
+            settleVelocityPx = with(density) { ChromeCapsuleSettleVelocity.toPx() },
+            pagerBlockPx = with(density) { ChromeCapsulePagerBlock.toPx() },
         )
     }
 }
 
 /**
- * 悬浮胶囊栏位：栏位背后留出系统栏内边距与一段间隙，胶囊本身带圆角与阴影浮在上面。
+ * 悬浮在内容之上的胶囊底栏：尺寸按入口数量自适应并居中，滚动手势下跟手收起。
  *
- * 容器高度固定，收起时胶囊用 [graphicsLayer] 平移到屏幕外，测量高度不变，因此不会牵动
- * Scaffold 的内容内边距——这是「滑动不再被加减速」的关键。
+ * 它不占布局：收起时只用 [graphicsLayer] 平移出屏幕，所以隐藏过程既不会改变页面高度，
+ * 也不会牵动内容测量；内容直接铺到屏幕底部，胶囊只是盖在上面。
  *
- * @param fromTop true 表示顶栏（向上收起），false 表示底栏（向下收起）。
- * @param inset 该侧系统栏（状态栏 / 导航栏）高度。
+ * @param inset 导航栏高度，胶囊默认避开系统手势区。
  */
 @Composable
-fun FloatingChromeCapsule(
+fun FloatingBottomCapsule(
     state: TabChromeState,
-    fromTop: Boolean,
     inset: Dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val density = LocalDensity.current
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .onSizeChanged { state.updateTravel(fromTop, it.height.toFloat()) }
             .padding(
-                start = ChromeCapsuleHorizontalPadding,
-                end = ChromeCapsuleHorizontalPadding,
-                top = if (fromTop) inset + ChromeCapsuleGap else 0.dp,
-                bottom = if (fromTop) 0.dp else inset + ChromeCapsuleGap,
-            )
+                start = ChromeCapsuleSideMargin,
+                end = ChromeCapsuleSideMargin,
+                bottom = inset + ChromeCapsuleBottomMargin,
+            ),
+        contentAlignment = Alignment.Center,
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth()
+                .widthIn(max = ChromeCapsuleMaxWidth)
                 .graphicsLayer {
-                    // 只改绘制位置：进度与行程都在绘制阶段读取，拖动时不触发重组和重测量。
-                    // 行程多加一段间隙，收起后连阴影一起离开屏幕边缘。
-                    val travel = (state.travelPx(fromTop) + ChromeCapsuleGap.toPx()) * state.progress
-                    translationY = if (fromTop) -travel else travel
+                    // 行程在绘制阶段算，进度变化不触发重组和重测量。
+                    translationY = state.progress * chromeStackTravelPx(density, inset, state.pagerPresent)
                 },
-            shape = ChromeCapsuleShape,
+            shape = ChromeCapsuleStadium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 6.dp,
         ) {
             content()
         }
     }
 }
 
-/** 胶囊左右留白：栏位不再贴着屏幕边缘。 */
-private val ChromeCapsuleHorizontalPadding = 12.dp
+/** 胶囊内单个入口的高度。 */
+val ChromeCapsuleItemHeight = 40.dp
 
-/** 胶囊与系统栏之间的间隙。 */
-private val ChromeCapsuleGap = 8.dp
+/** 胶囊内容四周留白。 */
+val ChromeCapsuleInnerInset = 4.dp
 
-private val ChromeCapsuleShape = RoundedCornerShape(28.dp)
+/** 单个入口的槽宽：由高度派生，改高时选中 pill 的胖瘦比例不漂移。 */
+val ChromeCapsuleSlotWidth = ChromeCapsuleItemHeight * 1.6f
 
-/** 栏位尚未测量时使用的拖动行程。 */
-private val ChromeFallbackDragDistance = 88.dp
+/** 胶囊高度 = 入口高 + 上下留白。 */
+val ChromeCapsuleHeight = ChromeCapsuleItemHeight + ChromeCapsuleInnerInset * 2
+
+/** 胶囊距屏幕左右与底缘的外边距。 */
+val ChromeCapsuleSideMargin = 12.dp
+val ChromeCapsuleBottomMargin = 8.dp
+
+/** 宽屏下胶囊不铺满，居中悬浮。 */
+val ChromeCapsuleMaxWidth = 420.dp
+
+/** 手指滑过这段距离胶囊正好收起到底。 */
+private val ChromeCapsuleDragDistance = 72.dp
 
 /** 松手时超过这个速度（按 dp/s 折算）就顺着甩动方向收起或展开。 */
-private val ChromeSettleVelocity = 600.dp
+private val ChromeCapsuleSettleVelocity = 600.dp
+
+/** 底栏胶囊：全高一半的圆角（stadium）。 */
+val ChromeCapsuleStadium = RoundedCornerShape(percent = 50)
+
+/**
+ * 分页胶囊在收起行程里占的高度：胶囊自身高度加上它与底栏胶囊之间的间距。
+ */
+val ChromeCapsulePagerBlock = ChromeCapsuleHeight + ChromeCapsuleBottomMargin
+
+/**
+ * 收起行程：整叠悬浮胶囊（分页胶囊 + 底栏胶囊）一起滑出屏幕所需的下移距离。
+ *
+ * 两层胶囊用同一个行程做绘制位移，相对间距全程不变，收起时才不会互相穿插。
+ */
+fun chromeStackTravelPx(density: Density, inset: Dp, pagerPresent: Boolean): Float =
+    with(density) {
+        (ChromeCapsuleHeight + inset + ChromeCapsuleBottomMargin * 2 +
+            if (pagerPresent) ChromeCapsulePagerBlock else 0.dp).toPx()
+    }
+
+/**
+ * tab 壳里的悬浮层上下文：底栏胶囊与叠在它上面的分页胶囊共用同一份收起状态与导航栏内边距。
+ *
+ * 为 null 表示当前页面不在 tab 壳里（没有悬浮底栏），页面上的分页控件就该保持普通样式。
+ */
+@Immutable
+class TabFloatingChrome(
+    val state: TabChromeState,
+    val navigationBarInset: Dp,
+)
+
+val LocalTabFloatingChrome = staticCompositionLocalOf<TabFloatingChrome?> { null }

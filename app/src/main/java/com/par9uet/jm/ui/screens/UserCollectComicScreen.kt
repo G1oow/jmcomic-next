@@ -107,6 +107,7 @@ import com.par9uet.jm.ui.components.PullRefreshAndLoadMoreGrid
 import com.par9uet.jm.ui.components.rememberComicPageGridState
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
 import com.par9uet.jm.ui.components.adaptiveDialogMaxHeight
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
@@ -450,6 +451,7 @@ fun UserCollectComicScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.Top),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         contentPadding = PaddingValues(14.dp),
+                        header = LocalTabHeader.current,
                         enablePullRefresh = false,
                         pageState = pageState,
                         onPageChange = { page ->
