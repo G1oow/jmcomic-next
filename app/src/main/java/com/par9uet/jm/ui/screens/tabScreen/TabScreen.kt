@@ -32,6 +32,7 @@ import com.par9uet.jm.ui.screens.UserCollectComicScreen
 import com.par9uet.jm.ui.screens.UserScreen
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
+import com.par9uet.jm.ui.components.LoginRequiredPlaceholder
 import com.par9uet.jm.ui.theme.LocalAppMotion
 import org.koin.compose.getKoin
 
@@ -51,7 +52,6 @@ fun TabScreen(
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val density = LocalDensity.current
     val chromeState = rememberTabChromeState()
-    val chromeProgress = chromeState.rememberChromeProgress()
     val statusBarInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     val navigationBarInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     // 切页时恢复栏位，避免新页面一进来就是收起状态。
@@ -76,7 +76,7 @@ fun TabScreen(
                     if (!useNavigationRail && !hideBottomNavigation) {
                         // 上滑收起、下滑展开的底栏。
                         CollapsingChromeSlot(
-                            progress = chromeProgress,
+                            state = chromeState,
                             fromTop = false,
                             minVisible = navigationBarInset,
                         ) {
@@ -87,7 +87,7 @@ fun TabScreen(
                 topBar = {
                     // 上滑收起、下滑展开的顶栏。
                     CollapsingChromeSlot(
-                        progress = chromeProgress,
+                        state = chromeState,
                         fromTop = true,
                         minVisible = statusBarInset,
                     ) {
@@ -123,14 +123,15 @@ fun TabScreen(
                             AiChatScreen()
                         }
                         composable("collect") {
-                            LaunchedEffect(isLogin) {
-                                if (!isLogin) {
-                                    mainNavController.navigate("login")
-                                }
-                            }
                             if (isLogin) {
                                 UserCollectComicScreen(
                                     useScaffold = false,
+                                )
+                            } else {
+                                // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
+                                LoginRequiredPlaceholder(
+                                    message = "登录后可查看收藏、历史与签到",
+                                    onLogin = { mainNavController.navigate("login") },
                                 )
                             }
                         }
