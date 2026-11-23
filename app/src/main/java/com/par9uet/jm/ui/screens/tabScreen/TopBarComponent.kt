@@ -24,9 +24,9 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 val LocalTabHeader = staticCompositionLocalOf<(@Composable () -> Unit)?> { null }
 
 /**
- * 页面标题：就是左上角一行文字，跟着列表滚走。
+ * 页面标题：左上角一行文字，跟着列表滚走。首页没有标题，只占出状态栏内边距。
  *
- * 不额外加左右内边距：横向缩进交给页面的内容边距（网格 12dp / 卡片列表 16dp），
+ * 标题不额外加左右内边距：横向缩进交给页面的内容边距（网格 12dp / 卡片列表 16dp），
  * 标题才能和下面的卡片、以及悬浮胶囊的侧边距对齐。
  *
  * @param inset 状态栏高度。
@@ -38,22 +38,24 @@ fun TabHeader(
     val tabNavController = LocalTabNavController.current
     val backStackEntryState by tabNavController.currentBackStackEntryAsState()
     val title = when (backStackEntryState?.destination?.route) {
-        "home" -> "禁漫天堂"
         "collect" -> "我的收藏"
         "user" -> "个人中心"
         else -> null
-    } ?: return
+    }
+    // 首页不放标题：这里只留状态栏内边距加一点呼吸，网格尽量往上。
     Box(
         modifier = Modifier
-            .padding(top = inset + 12.dp, bottom = 12.dp)
+            .padding(top = inset + 12.dp, bottom = if (title == null) 0.dp else 12.dp)
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        if (title != null) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }

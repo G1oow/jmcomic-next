@@ -105,7 +105,15 @@ fun TabScreen(
                             )
                         },
                         exitTransition = { motion.exit() },
-                        popEnterTransition = { motion.enter(fromLeft = true) },
+                        // pop 也按位置判方向：回到左边的首页时是从右边进场，不是固定从左边。
+                        popEnterTransition = {
+                            motion.enter(
+                                fromLeft = entersFromLeft(
+                                    initialState.destination.route,
+                                    targetState.destination.route,
+                                )
+                            )
+                        },
                         popExitTransition = { motion.exit() },
                         startDestination = tabName
                     ) {
