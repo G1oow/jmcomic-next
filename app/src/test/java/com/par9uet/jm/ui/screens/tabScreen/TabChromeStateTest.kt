@@ -113,4 +113,19 @@ class TabChromeStateTest {
         state.setPagerPresent(false)
         assertEquals(false, state.pagerPresent)
     }
+
+    @Test
+    fun pagerPresenceLengthensTheDragDistanceToKeepTheRatio() {
+        val state = TabChromeState(
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            motion = AppMotionPolicy(enabled = false, enterMs = 0, exitMs = 0),
+            dragDistancePx = 200f,
+            settleVelocityPx = 1_000f,
+            pagerBlockPx = 200f,
+        )
+        // 整叠胶囊行程更长，手指也要多滑一段才收到底，栏位才不会被放大成两倍速度。
+        state.setPagerPresent(true)
+        state.scroll(-100f)
+        assertEquals(0.25f, state.progress, 0.001f)
+    }
 }

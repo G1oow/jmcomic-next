@@ -51,6 +51,8 @@ class TabChromeState internal constructor(
     private val motion: AppMotionPolicy,
     private val dragDistancePx: Float,
     private val settleVelocityPx: Float,
+    /** 分页胶囊在场时多出来的收起行程，拖动距离按同样的量加长，跟手比例才不漂移。 */
+    private val pagerBlockPx: Float = 0f,
 ) {
     /** 0f = 完全展开，1f = 完全收起。 */
     private var progressState by mutableFloatStateOf(0f)
@@ -100,7 +102,9 @@ class TabChromeState internal constructor(
         settleJob?.cancel()
         settleJob = null
         dragDirection = if (deltaPx > 0f) 1f else -1f
-        val next = (progressState + deltaPx / dragDistancePx).coerceIn(0f, 1f)
+        val distancePx = dragDistancePx + if (pagerPresentState) pagerBlockPx else 0f
+        if (distancePx <= 0f) return
+        val next = (progressState + deltaPx / distancePx).coerceIn(0f, 1f)
         if (next != progressState) progressState = next
     }
 
@@ -153,6 +157,7 @@ fun rememberTabChromeState(): TabChromeState {
             motion = motion,
             dragDistancePx = with(density) { ChromeCapsuleDragDistance.toPx() },
             settleVelocityPx = with(density) { ChromeCapsuleSettleVelocity.toPx() },
+            pagerBlockPx = with(density) { ChromeCapsulePagerBlock.toPx() },
         )
     }
 }
