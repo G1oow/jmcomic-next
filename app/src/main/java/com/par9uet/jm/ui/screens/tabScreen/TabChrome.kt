@@ -1,7 +1,6 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -10,8 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -23,61 +23,93 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import com.par9uet.jm.ui.theme.AppMotionPolicy
 import com.par9uet.jm.ui.theme.LocalAppMotion
 import com.par9uet.jm.ui.theme.motionEasing
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 /**
  * 顶栏与底栏的显隐状态。
  *
- * 只有用户手指拖动（[NestedScrollSource.UserInput]）才改变状态，惯性滑动不参与判定，
- * 避免快速甩动列表时栏位来回抖动。上滑越过阈值后收起，下滑越过阈值后展开。
+ * 收起进度跟着手指连续变化：上滑多少就收起多少，下滑多少就展开多少，松手后再按位置和
+ * 甩动方向补一段短动画收尾，而不是攒够一小段位移就直接跳到底。只有手指拖动
+ * （[NestedScrollSource.UserInput]）改变进度，惯性滑动不参与，避免快速甩动列表时栏位抖动。
  */
 @Stable
 class TabChromeState internal constructor(
-    private val hideThresholdPx: Float,
-    private val showThresholdPx: Float,
+    private val scope: CoroutineScope,
+    private val motion: AppMotionPolicy,
+    private val collapseDistancePx: Float,
+    private val flingVelocityPx: Float,
 ) {
-    var hidden by mutableStateOf(false)
-        private set
+    /** 已收起的位移，范围 0f（完全展开）到 [collapseDistancePx]（完全收起）。 */
+    private var offsetPx by mutableFloatStateOf(0f)
 
-    private var draggedForward = 0f
-    private var draggedBackward = 0f
+    private var settleJob: Job? = null
+
+    /** 0f = 完全展开，1f = 完全收起。 */
+    val progress: Float
+        get() = (offsetPx / collapseDistancePx).coerceIn(0f, 1f)
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            if (source == NestedScrollSource.UserInput) onDrag(available.y)
+            if (source == NestedScrollSource.UserInput) dragBy(-available.y)
             // 只观察，不消费，滚动行为完全交给列表。
             return Offset.Zero
+        }
+
+        override suspend fun onPreFling(available: Velocity): Velocity {
+            // 手指离开时按当前位置和甩动方向补齐剩余位移。
+            settle(available.y)
+            return Velocity.Zero
         }
     }
 
     /** 切页、回到前台等场景重新展开栏位。 */
     fun show() {
-        draggedForward = 0f
-        draggedBackward = 0f
-        hidden = false
+        animateTo(0f)
     }
 
-    private fun onDrag(deltaY: Float) {
-        if (deltaY < 0f) {
-            // 手指上滑：内容向前翻，收起栏位。
-            draggedBackward = 0f
-            if (hidden) return
-            draggedForward += -deltaY
-            if (draggedForward >= hideThresholdPx) {
-                draggedForward = 0f
-                hidden = true
-            }
-        } else if (deltaY > 0f) {
-            // 手指下滑：回头看内容，展开栏位。
-            draggedForward = 0f
-            if (!hidden) return
-            draggedBackward += deltaY
-            if (draggedBackward >= showThresholdPx) {
-                draggedBackward = 0f
-                hidden = false
+    /** [deltaPx] 为正表示收起方向：手指上滑，内容向前翻。 */
+    private fun dragBy(deltaPx: Float) {
+        settleJob?.cancel()
+        settleJob = null
+        offsetPx = (offsetPx + deltaPx).coerceIn(0f, collapseDistancePx)
+    }
+
+    private fun settle(velocityY: Float) {
+        val target = when {
+            // 继续上滑的惯性：直接收起。
+            velocityY <= -flingVelocityPx -> collapseDistancePx
+            // 向下回看的惯性：直接展开。
+            velocityY >= flingVelocityPx -> 0f
+            offsetPx >= collapseDistancePx / 2f -> collapseDistancePx
+            else -> 0f
+        }
+        animateTo(target)
+    }
+
+    private fun animateTo(target: Float) {
+        settleJob?.cancel()
+        settleJob = null
+        if (target == offsetPx) return
+        if (!motion.enabled) {
+            offsetPx = target
+            return
+        }
+        val duration = if (target > offsetPx) motion.exitMs else motion.enterMs
+        settleJob = scope.launch {
+            animate(
+                initialValue = offsetPx,
+                targetValue = target,
+                animationSpec = tween(durationMillis = duration, easing = motionEasing),
+            ) { value, _ ->
+                offsetPx = value
             }
         }
     }
@@ -86,44 +118,28 @@ class TabChromeState internal constructor(
 @Composable
 fun rememberTabChromeState(): TabChromeState {
     val density = LocalDensity.current
-    return remember(density) {
+    val motion = LocalAppMotion.current
+    val scope = rememberCoroutineScope()
+    return remember(density, motion, scope) {
         TabChromeState(
-            hideThresholdPx = with(density) { 12.dp.toPx() },
-            showThresholdPx = with(density) { 4.dp.toPx() },
+            scope = scope,
+            motion = motion,
+            collapseDistancePx = with(density) { ChromeCollapseDistance.toPx() },
+            flingVelocityPx = with(density) { ChromeSettleVelocity.toPx() },
         )
     }
 }
 
-/** 0f = 完全展开，1f = 完全收起。 */
-@Composable
-fun TabChromeState.rememberChromeProgress(): Float {
-    val motion = LocalAppMotion.current
-    val hiddenNow = hidden
-    val progress by animateFloatAsState(
-        targetValue = if (hiddenNow) 1f else 0f,
-        animationSpec = if (!motion.enabled) {
-            snap()
-        } else {
-            tween(
-                durationMillis = if (hiddenNow) motion.exitMs else motion.enterMs,
-                easing = motionEasing,
-            )
-        },
-        label = "tabChromeProgress",
-    )
-    return progress
-}
-
 /**
- * 栏位容器：栏位高度与内容位移同步收缩，[Scaffold] 的内边距随之变化，
- * 因此内容不会在动画结束后突然跳动。
+ * 栏位容器：栏位高度与内容位移同步收缩，[androidx.compose.material3.Scaffold] 的内边距
+ * 随之变化，因此内容不会在动画结束后突然跳动。
  *
  * @param fromTop true 表示顶栏（向上收起），false 表示底栏（向下收起）。
  * @param minVisible 收起后仍为系统栏预留的高度，避免内容滑到状态栏/导航栏手势区下面。
  */
 @Composable
 fun CollapsingChromeSlot(
-    progress: Float,
+    state: TabChromeState,
     fromTop: Boolean,
     modifier: Modifier = Modifier,
     minVisible: Dp = 0.dp,
@@ -131,7 +147,6 @@ fun CollapsingChromeSlot(
     content: @Composable () -> Unit,
 ) {
     val minVisiblePx = with(LocalDensity.current) { minVisible.roundToPx() }
-    val fraction = progress.coerceIn(0f, 1f)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -143,7 +158,8 @@ fun CollapsingChromeSlot(
                 it.measure(Constraints(maxWidth = constraints.maxWidth))
             }
             val fullHeight = placeables.maxOfOrNull { it.height } ?: 0
-            val shift = (fullHeight * fraction).roundToInt()
+            // 进度在布局阶段读取：拖动过程中只有栏位重新测量，页面主体不参与重组。
+            val shift = (fullHeight * state.progress).roundToInt()
             val visibleHeight = (fullHeight - shift)
                 .coerceAtLeast(minVisiblePx)
                 .coerceIn(constraints.minHeight, constraints.maxHeight)
@@ -154,5 +170,11 @@ fun CollapsingChromeSlot(
         }
     }
 }
+
+/** 手指滑过这段距离，栏位正好收起或展开到底。 */
+private val ChromeCollapseDistance = 72.dp
+
+/** 松手时超过这个速度（按 dp/s 折算）就顺着甩动方向收起或展开。 */
+private val ChromeSettleVelocity = 600.dp
 
 private const val ChromeSlotContent = "tabChromeSlot"

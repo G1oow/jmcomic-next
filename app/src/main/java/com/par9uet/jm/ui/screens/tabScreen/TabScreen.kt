@@ -51,7 +51,6 @@ fun TabScreen(
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val density = LocalDensity.current
     val chromeState = rememberTabChromeState()
-    val chromeProgress = chromeState.rememberChromeProgress()
     val statusBarInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     val navigationBarInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
     // 切页时恢复栏位，避免新页面一进来就是收起状态。
@@ -76,7 +75,7 @@ fun TabScreen(
                     if (!useNavigationRail && !hideBottomNavigation) {
                         // 上滑收起、下滑展开的底栏。
                         CollapsingChromeSlot(
-                            progress = chromeProgress,
+                            state = chromeState,
                             fromTop = false,
                             minVisible = navigationBarInset,
                         ) {
@@ -87,7 +86,7 @@ fun TabScreen(
                 topBar = {
                     // 上滑收起、下滑展开的顶栏。
                     CollapsingChromeSlot(
-                        progress = chromeProgress,
+                        state = chromeState,
                         fromTop = true,
                         minVisible = statusBarInset,
                     ) {
