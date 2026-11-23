@@ -77,62 +77,69 @@ fun TabScreen(
             val useNavigationRail = maxWidth >= 700.dp
             val hideBottomCapsule = currentRoute == "ai" && imeVisible
             val showBottomCapsule = !useNavigationRail && !hideBottomCapsule
-            // 有列表头部的页面自己带状态栏内边距，其余页面在这里补回，避免内容钻到系统栏下。
-            val pageRendersHeader = when (currentRoute) {
-                "home", "user" -> true
-                "collect" -> isLogin
-                else -> false
+            // 悬浮层上下文：页面里的分页胶囊靠它跟底栏胶囊共用同一份收起状态与导航栏内边距。
+            // 宽屏走侧栏、没有悬浮底栏，页面里的分页控件保持普通样式。
+            val floatingChrome = remember(chromeState, navigationBarInset, useNavigationRail) {
+                if (useNavigationRail) null else TabFloatingChrome(chromeState, navigationBarInset)
             }
-            // 底层：页面内容。顶栏由各页列表自己在首位渲染，这里不再有固定栏位。
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(if (pageRendersHeader) Modifier else Modifier.statusBarsPadding())
-                    .nestedScroll(chromeState.nestedScrollConnection)
-            ) {
-                if (useNavigationRail) {
-                    NavigationRailComponent()
+            CompositionLocalProvider(LocalTabFloatingChrome provides floatingChrome) {
+                // 有列表头部的页面自己带状态栏内边距，其余页面在这里补回，避免内容钻到系统栏下。
+                val pageRendersHeader = when (currentRoute) {
+                    "home", "user" -> true
+                    "collect" -> isLogin
+                    else -> false
                 }
-                NavHost(
-                    modifier = Modifier.weight(1f),
-                    navController = tabNavController,
-                    enterTransition = { motion.enter() },
-                    exitTransition = { motion.exit() },
-                    popEnterTransition = { motion.enter(back = true) },
-                    popExitTransition = { motion.exit(back = true) },
-                    startDestination = tabName
+                // 底层：页面内容。顶栏由各页列表自己在首位渲染，这里不再有固定栏位。
+                Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (pageRendersHeader) Modifier else Modifier.statusBarsPadding())
+                        .nestedScroll(chromeState.nestedScrollConnection)
                 ) {
-                    composable("home") {
-                        HomeScreen()
+                    if (useNavigationRail) {
+                        NavigationRailComponent()
                     }
-                    composable("user") {
-                        UserScreen()
-                    }
-                    composable("ai") {
-                        AiChatScreen()
-                    }
-                    composable("collect") {
-                        if (isLogin) {
-                            UserCollectComicScreen(
-                                useScaffold = false,
-                            )
-                        } else {
-                            // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
-                            LoginRequiredPlaceholder(
-                                message = "登录后可查看收藏、历史与签到",
-                                onLogin = { mainNavController.navigate("login") },
-                            )
+                    NavHost(
+                        modifier = Modifier.weight(1f),
+                        navController = tabNavController,
+                        enterTransition = { motion.enter() },
+                        exitTransition = { motion.exit() },
+                        popEnterTransition = { motion.enter(back = true) },
+                        popExitTransition = { motion.exit(back = true) },
+                        startDestination = tabName
+                    ) {
+                        composable("home") {
+                            HomeScreen()
+                        }
+                        composable("user") {
+                            UserScreen()
+                        }
+                        composable("ai") {
+                            AiChatScreen()
+                        }
+                        composable("collect") {
+                            if (isLogin) {
+                                UserCollectComicScreen(
+                                    useScaffold = false,
+                                )
+                            } else {
+                                // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
+                                LoginRequiredPlaceholder(
+                                    message = "登录后可查看收藏、历史与签到",
+                                    onLogin = { mainNavController.navigate("login") },
+                                )
+                            }
                         }
                     }
                 }
-            }
-            // 上层：悬浮胶囊底栏。内容直接铺到屏幕底部，胶囊只是盖在上面。
-            if (showBottomCapsule) {
-                BottomNavigationBarComponent(
-                    chromeState = chromeState,
-                    inset = navigationBarInset,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
+                // 上层：悬浮胶囊底栏。内容直接铺到屏幕底部，胶囊只是盖在上面。
+                if (showBottomCapsule) {
+                    BottomNavigationBarComponent(
+                        chromeState = chromeState,
+                        inset = navigationBarInset,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
             }
         }
     }

@@ -31,6 +31,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.par9uet.jm.ui.theme.revealComicPage
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabFloatingChrome
 
 /** Persist scroll across navigation; reset only when the query or display page changes. */
 @Composable
@@ -163,13 +164,28 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
         }
     }
     val gridContent: @Composable () -> Unit = {
-        Column(modifier = Modifier.fillMaxSize()) {
-            val firstKey = if (lazyPagingItems.itemCount > 0) lazyPagingItems.peek(0)?.let(key) else null
-            Box(modifier = Modifier.weight(1f).revealComicPage(
-                pageState?.page to firstKey, ready = firstKey != null && !isRefreshing,
-            )) { itemsContent() }
-            if (pageState?.enabled == true) {
-                ComicPaginationBar(state = pageState, onPageChange = onPageChange)
+        val firstKey = if (lazyPagingItems.itemCount > 0) lazyPagingItems.peek(0)?.let(key) else null
+        val reveal = Modifier.revealComicPage(
+            pageState?.page to firstKey, ready = firstKey != null && !isRefreshing,
+        )
+        if (LocalTabFloatingChrome.current == null) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f).then(reveal)) { itemsContent() }
+                if (pageState?.enabled == true) {
+                    ComicPaginationBar(state = pageState, onPageChange = onPageChange)
+                }
+            }
+        } else {
+            // tab 壳里的悬浮底栏就在同一屏底部，分页条跟着浮起来，才不会被胶囊挡住。
+            Box(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.fillMaxSize().then(reveal)) { itemsContent() }
+                if (pageState?.enabled == true) {
+                    FloatingComicPaginationCapsule(
+                        state = pageState,
+                        onPageChange = onPageChange,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                }
             }
         }
     }

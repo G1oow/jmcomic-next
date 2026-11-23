@@ -6,6 +6,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -61,7 +62,7 @@ import com.par9uet.jm.store.UserManager
 import com.par9uet.jm.data.models.HomeComicSwiperItem
 import com.par9uet.jm.ui.components.Comic
 import com.par9uet.jm.ui.components.ComicCoverPreloadEffect
-import com.par9uet.jm.ui.components.ComicPaginationBar
+import com.par9uet.jm.ui.components.FloatingComicPaginationCapsule
 import com.par9uet.jm.ui.components.HomeCategorySortDialog
 import com.par9uet.jm.ui.components.rememberComicListPagination
 import com.par9uet.jm.ui.components.ComicSkeleton
@@ -231,7 +232,7 @@ fun HomeScreen(
         )
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize()) {
         val allExcludedTags = remember(localSetting.blockedTagList, localSetting.homeExcludedTags) {
             (localSetting.blockedTagList + localSetting.homeExcludedTags).distinct()
         }
@@ -253,7 +254,7 @@ fun HomeScreen(
         }
         ComicCoverPreloadEffect(nextPageComics, enabled = !homeComicState.isLoading)
         PullToRefreshBox(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             isRefreshing = homeComicState.isLoading,
             onRefresh = { comicViewModel.getHomeComic() }
         ) {
@@ -363,12 +364,13 @@ fun HomeScreen(
             )
         }
         if (pagination.state.enabled) {
-            ComicPaginationBar(
+            FloatingComicPaginationCapsule(
                 state = pagination.state,
                 onPageChange = { page ->
                     pagination.onPageChange(page)
                     scope.launch { gridState.scrollToItem(0) }
                 },
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }

@@ -10,12 +10,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -56,9 +60,16 @@ class TabChromeState internal constructor(
     /** 最近一次拖动的方向：1f 收起，-1f 展开，0f 本次手势尚未拖动。 */
     private var dragDirection = 0f
 
+    /** 底栏胶囊上方是否还叠着一层分页胶囊，收起行程要连它一起算。 */
+    private var pagerPresentState by mutableStateOf(false)
+
     /** 绘制阶段读取，进度变化只重绘，不重组。 */
     val progress: Float
         get() = progressState
+
+    /** 底栏胶囊上方是否叠着分页胶囊，同样在绘制阶段读取。 */
+    val pagerPresent: Boolean
+        get() = pagerPresentState
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -77,6 +88,11 @@ class TabChromeState internal constructor(
 
     /** 切页、回到前台等场景重新展开胶囊。 */
     fun show() = animateTo(0f)
+
+    /** 由页面里的悬浮分页胶囊登记自己在场，好让整叠胶囊一起滑出。 */
+    fun setPagerPresent(present: Boolean) {
+        if (pagerPresentState != present) pagerPresentState = present
+    }
 
     /** [deltaPx] 为正表示收起方向：手指上滑，内容向前翻。 */
     private fun dragBy(deltaPx: Float) {
@@ -156,6 +172,7 @@ fun FloatingBottomCapsule(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val density = LocalDensity.current
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -171,11 +188,7 @@ fun FloatingBottomCapsule(
                 .widthIn(max = ChromeCapsuleMaxWidth)
                 .graphicsLayer {
                     // 行程在绘制阶段算，进度变化不触发重组和重测量。
-                    translationY = state.progress * (
-                        ChromeCapsuleHeight +
-                            inset +
-                            ChromeCapsuleBottomMargin * 2
-                        ).toPx()
+                    translationY = state.progress * chromeStackTravelPx(density, inset, state.pagerPresent)
                 },
             shape = ChromeCapsuleStadium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -212,3 +225,32 @@ private val ChromeCapsuleSettleVelocity = 600.dp
 
 /** 底栏胶囊：全高一半的圆角（stadium）。 */
 val ChromeCapsuleStadium = RoundedCornerShape(percent = 50)
+
+/**
+ * 分页胶囊在收起行程里占的高度：胶囊自身高度加上它与底栏胶囊之间的间距。
+ */
+val ChromeCapsulePagerBlock = ChromeCapsuleHeight + ChromeCapsuleBottomMargin
+
+/**
+ * 收起行程：整叠悬浮胶囊（分页胶囊 + 底栏胶囊）一起滑出屏幕所需的下移距离。
+ *
+ * 两层胶囊用同一个行程做绘制位移，相对间距全程不变，收起时才不会互相穿插。
+ */
+fun chromeStackTravelPx(density: Density, inset: Dp, pagerPresent: Boolean): Float =
+    with(density) {
+        (ChromeCapsuleHeight + inset + ChromeCapsuleBottomMargin * 2 +
+            if (pagerPresent) ChromeCapsulePagerBlock else 0.dp).toPx()
+    }
+
+/**
+ * tab 壳里的悬浮层上下文：底栏胶囊与叠在它上面的分页胶囊共用同一份收起状态与导航栏内边距。
+ *
+ * 为 null 表示当前页面不在 tab 壳里（没有悬浮底栏），页面上的分页控件就该保持普通样式。
+ */
+@Immutable
+class TabFloatingChrome(
+    val state: TabChromeState,
+    val navigationBarInset: Dp,
+)
+
+val LocalTabFloatingChrome = staticCompositionLocalOf<TabFloatingChrome?> { null }

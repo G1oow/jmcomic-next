@@ -2,6 +2,8 @@ package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Velocity
 import com.par9uet.jm.ui.theme.AppMotionPolicy
 import kotlinx.coroutines.CoroutineScope
@@ -89,5 +91,26 @@ class TabChromeStateTest {
         state.scroll(-1_000f)
         state.show()
         assertEquals(0f, state.progress, 0.001f)
+    }
+    @Test
+    fun pagerPresenceExtendsTheCollapseTravel() {
+        val density = Density(2f)
+        val withoutPager = chromeStackTravelPx(density, inset = 8.dp, pagerPresent = false)
+        val withPager = chromeStackTravelPx(density, inset = 8.dp, pagerPresent = true)
+        // 分页胶囊叠在底栏上方，行程要整块多出它的高度与间距，两层才会一起滑出屏幕。
+        assertEquals(with(density) { ChromeCapsulePagerBlock.toPx() }, withPager - withoutPager, 0.001f)
+        assertEquals(true, withPager > withoutPager)
+    }
+
+    @Test
+    fun pagerPresenceIsTrackedAndIdempotent() {
+        val state = chromeState()
+        assertEquals(false, state.pagerPresent)
+        state.setPagerPresent(true)
+        assertEquals(true, state.pagerPresent)
+        state.setPagerPresent(true)
+        assertEquals(true, state.pagerPresent)
+        state.setPagerPresent(false)
+        assertEquals(false, state.pagerPresent)
     }
 }
