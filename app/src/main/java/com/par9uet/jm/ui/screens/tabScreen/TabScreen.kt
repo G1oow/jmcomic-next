@@ -5,7 +5,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -15,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -46,6 +49,13 @@ fun TabScreen(
     val isLogin by userManager.isLoginState.collectAsState(false)
     val localSetting by localSettingManager.localSettingState.collectAsState()
     val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val density = LocalDensity.current
+    val chromeState = rememberTabChromeState()
+    val chromeProgress = chromeState.rememberChromeProgress()
+    val statusBarInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
+    val navigationBarInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+    // 切页时恢复栏位，避免新页面一进来就是收起状态。
+    LaunchedEffect(currentRoute) { chromeState.show() }
     LaunchedEffect(localSetting.showAiEntry, currentRoute) {
         if (!localSetting.showAiEntry && currentRoute == "ai") {
             tabNavController.navigate("home") {
@@ -64,19 +74,32 @@ fun TabScreen(
             Scaffold(
                 bottomBar = {
                     if (!useNavigationRail && !hideBottomNavigation) {
-                        BottomNavigationBarComponent()
+                        // 上滑收起、下滑展开的底栏。
+                        CollapsingChromeSlot(
+                            progress = chromeProgress,
+                            fromTop = false,
+                            minVisible = navigationBarInset,
+                        ) {
+                            BottomNavigationBarComponent()
+                        }
                     }
                 },
                 topBar = {
-                    // Keep the page title visible; only the collection
-                    // controls below it collapse while scrolling.
-                    TopBarComponent()
+                    // 上滑收起、下滑展开的顶栏。
+                    CollapsingChromeSlot(
+                        progress = chromeProgress,
+                        fromTop = true,
+                        minVisible = statusBarInset,
+                    ) {
+                        TopBarComponent()
+                    }
                 }
             ) { innerPadding ->
                 Row(
                     modifier = Modifier
                         .padding(innerPadding)
                         .fillMaxSize()
+                        .nestedScroll(chromeState.nestedScrollConnection)
                 ) {
                     if (useNavigationRail) {
                         NavigationRailComponent()

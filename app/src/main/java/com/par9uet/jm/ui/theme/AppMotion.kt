@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 
-private val motionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
+internal val motionEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
 
 data class AppMotionPolicy(val enabled: Boolean, val enterMs: Int, val exitMs: Int) {
     fun enter(back: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
