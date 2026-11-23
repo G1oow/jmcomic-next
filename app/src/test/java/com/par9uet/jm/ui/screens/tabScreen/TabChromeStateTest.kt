@@ -15,11 +15,9 @@ class TabChromeStateTest {
     private fun chromeState(): TabChromeState = TabChromeState(
         scope = CoroutineScope(Dispatchers.Unconfined),
         motion = AppMotionPolicy(enabled = false, enterMs = 0, exitMs = 0),
-        fallbackDragDistancePx = 100f,
+        dragDistancePx = 200f,
         settleVelocityPx = 1_000f,
-    ).apply {
-        updateDragDistance(200f)
-    }
+    )
 
     private fun TabChromeState.scroll(deltaY: Float, source: NestedScrollSource = NestedScrollSource.UserInput) {
         nestedScrollConnection.onPreScroll(Offset(0f, deltaY), source)

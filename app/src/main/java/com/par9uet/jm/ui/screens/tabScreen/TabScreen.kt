@@ -1,21 +1,21 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
@@ -54,7 +54,7 @@ fun TabScreen(
     val chromeState = rememberTabChromeState()
     val statusBarInset = with(density) { WindowInsets.statusBars.getTop(this).toDp() }
     val navigationBarInset = with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
-    // 切页时恢复栏位，避免新页面一进来就是收起状态。
+    // 切页时恢复胶囊，避免新页面一进来就是收起状态。
     LaunchedEffect(currentRoute) { chromeState.show() }
     LaunchedEffect(localSetting.showAiEntry, currentRoute) {
         if (!localSetting.showAiEntry && currentRoute == "ai") {
@@ -70,27 +70,23 @@ fun TabScreen(
     ) {
         BoxWithConstraints {
             val useNavigationRail = maxWidth >= 700.dp
-            val hideBottomNavigation = currentRoute == "ai" && imeVisible
-            Scaffold(
-                bottomBar = {
-                    if (!useNavigationRail && !hideBottomNavigation) {
-                        // 悬浮胶囊底栏：上滑跟手收起、下滑展开。
-                        BottomNavigationBarComponent(
-                            chromeState = chromeState,
-                            inset = navigationBarInset,
-                        )
-                    }
-                },
-                topBar = {
-                    // 悬浮胶囊顶栏固定在页面最上方，不随滚动隐藏。
-                    TopBarComponent(inset = statusBarInset)
-                },
-            ) { innerPadding ->
+            val hideBottomCapsule = currentRoute == "ai" && imeVisible
+            val showBottomCapsule = !useNavigationRail && !hideBottomCapsule
+            // 内容为悬浮胶囊让出的底部净空：只保留系统导航栏内边距 + 展开态胶囊所需空间，
+            // 收起时由 Modifier.bottomChromeClearance 连续收敛到只剩系统栏内边距。
+            val clearancePx = with(density) {
+                (navigationBarInset + if (showBottomCapsule) ChromeCapsuleClearance else 0.dp)
+                    .roundToPx()
+            }
+            // 底层：固定顶栏 + 页面内容。顶栏和列表同层，永远占住页面最上方，不参与滚动。
+            Column(modifier = Modifier.fillMaxSize()) {
+                TopBarComponent(inset = statusBarInset)
                 Row(
                     modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
+                        .weight(1f)
+                        .fillMaxWidth()
                         .nestedScroll(chromeState.nestedScrollConnection)
+                        .bottomChromeClearance(chromeState, clearancePx)
                 ) {
                     if (useNavigationRail) {
                         NavigationRailComponent()
@@ -128,6 +124,14 @@ fun TabScreen(
                         }
                     }
                 }
+            }
+            // 上层：悬浮胶囊底栏。浮在内容之上，滚动时跟手收起，不占布局。
+            if (showBottomCapsule) {
+                BottomNavigationBarComponent(
+                    chromeState = chromeState,
+                    inset = navigationBarInset,
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                )
             }
         }
     }
