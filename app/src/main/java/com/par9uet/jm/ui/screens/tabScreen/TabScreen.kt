@@ -82,11 +82,8 @@ fun TabScreen(
                     }
                 },
                 topBar = {
-                    // 悬浮胶囊顶栏：上滑跟手收起、下滑展开。
-                    TopBarComponent(
-                        chromeState = chromeState,
-                        inset = statusBarInset,
-                    )
+                    // 悬浮胶囊顶栏固定在页面最上方，不随滚动隐藏。
+                    TopBarComponent(inset = statusBarInset)
                 },
             ) { innerPadding ->
                 Row(

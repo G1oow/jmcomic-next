@@ -17,11 +17,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
@@ -32,17 +32,14 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
- * 顶栏与底栏的显隐状态。
+ * 底栏的显隐状态。
  *
- * 收起进度只驱动绘制阶段的位移，不参与测量：[FloatingChromeCapsule] 的高度恒定，
- * [androidx.compose.material3.Scaffold] 的内容内边距也就不会随手指变化。拖动时页面主体
- * 既不重新测量也不会跟着上下位移，滚动量与手指位移一一对应，不会再出现「收栏时滑动被
- * 加速或减速」的手感。
- *
- * 只有手指拖动（[NestedScrollSource.UserInput]）改变进度，惯性滑动不参与，避免快速甩动
- * 列表时栏位来回抖动。
+ * 收起进度跟着手指连续变化：上滑多少就收起多少，下滑多少就展开多少，松手后再按位置和
+ * 甩动方向补一段短动画收尾。只有手指拖动（[NestedScrollSource.UserInput]）改变进度，
+ * 惯性滑动不参与，避免快速甩动列表时栏位抖动。
  */
 @Stable
 class TabChromeState internal constructor(
@@ -54,37 +51,28 @@ class TabChromeState internal constructor(
     /** 0f = 完全展开，1f = 完全收起。 */
     private var progressState by mutableFloatStateOf(0f)
 
-    /** 顶栏 / 底栏容纳胶囊所需的总高度（含系统栏内边距与悬浮外边距）。 */
-    private var topTravelPx by mutableFloatStateOf(0f)
-    private var bottomTravelPx by mutableFloatStateOf(0f)
+    /** 收起需要滑过的距离，由 [CollapsingBottomCapsule] 测量后回报，和手指一一对应。 */
+    private var dragDistancePx by mutableFloatStateOf(0f)
 
     private var settleJob: Job? = null
 
     /** 最近一次拖动的方向：1f 收起，-1f 展开，0f 本次手势尚未拖动。 */
     private var dragDirection = 0f
 
-    /** 供绘制阶段读取：只在 [graphicsLayer] 里读，进度变化只触发重绘。 */
+    /** 0f 完全展开，1f 完全收起。布局阶段读取，进度变化不触发重组。 */
     val progress: Float
         get() = progressState
 
-    /** 收起时需要移动的距离，等于栏位总高度，正好把胶囊推到屏幕外。 */
-    fun travelPx(fromTop: Boolean): Float =
-        (if (fromTop) topTravelPx else bottomTravelPx).takeIf { it > 0f } ?: fallbackDragDistancePx
-
-    /** 栏位测量完成后回报自身总高度。 */
-    fun updateTravel(fromTop: Boolean, travelPx: Float) {
-        if (fromTop) {
-            if (topTravelPx != travelPx) topTravelPx = travelPx
-        } else if (bottomTravelPx != travelPx) {
-            bottomTravelPx = travelPx
-        }
+    /** 栏位测量完成后回报「展开高度减去系统导航栏内边距」。 */
+    internal fun updateDragDistance(distancePx: Float) {
+        if (dragDistancePx != distancePx) dragDistancePx = distancePx
     }
 
     val nestedScrollConnection: NestedScrollConnection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
             // available.y < 0 表示手指上滑、内容向前滚动，此时收起。
             if (source == NestedScrollSource.UserInput) dragBy(-available.y)
-            // 只观察，不消费：滚动量全部留给列表，栏位只做视觉位移。
+            // 只观察，不消费：滚动量全部留给列表，栏位只跟着位移和收缩。
             return Offset.Zero
         }
 
@@ -98,10 +86,8 @@ class TabChromeState internal constructor(
     /** 切页、回到前台等场景重新展开栏位。 */
     fun show() = animateTo(0f)
 
-    /** 手指滑过这段距离正好收起到底，位移与手指严格同步。 */
-    private val dragDistancePx: Float
-        get() = listOf(topTravelPx, bottomTravelPx).filter { it > 0f }.minOrNull()
-            ?: fallbackDragDistancePx
+    private val resolvedDragDistancePx: Float
+        get() = dragDistancePx.takeIf { it > 0f } ?: fallbackDragDistancePx
 
     /** [deltaPx] 为正表示收起方向：手指上滑，内容向前翻。 */
     private fun dragBy(deltaPx: Float) {
@@ -109,7 +95,7 @@ class TabChromeState internal constructor(
         settleJob?.cancel()
         settleJob = null
         dragDirection = if (deltaPx > 0f) 1f else -1f
-        val next = (progressState + deltaPx / dragDistancePx).coerceIn(0f, 1f)
+        val next = (progressState + deltaPx / resolvedDragDistancePx).coerceIn(0f, 1f)
         if (next != progressState) progressState = next
     }
 
@@ -167,18 +153,12 @@ fun rememberTabChromeState(): TabChromeState {
 }
 
 /**
- * 悬浮胶囊栏位：栏位背后留出系统栏内边距与一段间隙，胶囊本身带圆角与阴影浮在上面。
+ * 固定悬浮胶囊：顶栏常驻页面最上方，不随滚动隐藏。
  *
- * 容器高度固定，收起时胶囊用 [graphicsLayer] 平移到屏幕外，测量高度不变，因此不会牵动
- * Scaffold 的内容内边距——这是「滑动不再被加减速」的关键。
- *
- * @param fromTop true 表示顶栏（向上收起），false 表示底栏（向下收起）。
- * @param inset 该侧系统栏（状态栏 / 导航栏）高度。
+ * @param inset 状态栏高度。
  */
 @Composable
-fun FloatingChromeCapsule(
-    state: TabChromeState,
-    fromTop: Boolean,
+fun FloatingTopCapsule(
     inset: Dp,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
@@ -186,36 +166,77 @@ fun FloatingChromeCapsule(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .onSizeChanged { state.updateTravel(fromTop, it.height.toFloat()) }
             .padding(
                 start = ChromeCapsuleHorizontalPadding,
                 end = ChromeCapsuleHorizontalPadding,
-                top = if (fromTop) inset + ChromeCapsuleGap else 0.dp,
-                bottom = if (fromTop) 0.dp else inset + ChromeCapsuleGap,
+                top = inset + ChromeCapsuleGap,
+                bottom = ChromeCapsuleGap,
             )
     ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .graphicsLayer {
-                    // 只改绘制位置：进度与行程都在绘制阶段读取，拖动时不触发重组和重测量。
-                    // 行程多加一段间隙，收起后连阴影一起离开屏幕边缘。
-                    val travel = (state.travelPx(fromTop) + ChromeCapsuleGap.toPx()) * state.progress
-                    translationY = if (fromTop) -travel else travel
-                },
-            shape = ChromeCapsuleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh,
-            shadowElevation = 6.dp,
-        ) {
+        CapsuleSurface {
             content()
         }
     }
 }
 
-/** 胶囊左右留白：栏位不再贴着屏幕边缘。 */
+/**
+ * 悬浮胶囊底栏：上滑跟手收起、下滑展开。
+ *
+ * 栏位高度跟着进度一起收缩，所以页面可用高度实时变化：收起过程中只改内容区的**底部**
+ * 边界，顶部边界不动，内容不会整体位移；收起完成后内容一直补到系统导航栏上方，不留空白。
+ * 高度在布局阶段算，进度变化只重新测量栏位与内容高度，不触发重组。
+ *
+ * @param inset 导航栏高度，收起后仍为系统手势区预留。
+ */
+@Composable
+fun CollapsingBottomCapsule(
+    state: TabChromeState,
+    inset: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val insetPx = with(density) { inset.roundToPx() }
+    val gapPx = with(density) { ChromeCapsuleGap.roundToPx() }
+    SubcomposeLayout(modifier = modifier.fillMaxWidth()) { constraints ->
+        val placeables = subcompose(BottomCapsuleContent) {
+            CapsuleSurface { content() }
+        }.map { it.measure(Constraints(maxWidth = constraints.maxWidth)) }
+        val capsuleHeight = placeables.maxOfOrNull { it.height } ?: 0
+        // 展开时：系统栏 + 下间隙 + 胶囊 + 上间隙。
+        val expandedHeight = insetPx + gapPx + capsuleHeight + gapPx
+        state.updateDragDistance((expandedHeight - insetPx).toFloat())
+        val progress = state.progress
+        val slotHeight = (expandedHeight - (expandedHeight - insetPx) * progress).roundToInt()
+        // 收起行程：连阴影一起滑出屏幕底部。
+        val travel = ((insetPx + gapPx + capsuleHeight) * progress).roundToInt()
+        val capsuleTop = slotHeight - insetPx - gapPx - capsuleHeight + travel
+        layout(constraints.maxWidth, slotHeight) {
+            // 允许画到栏位之外：超出屏幕底部的部分由窗口自然裁掉。
+            placeables.forEach { it.placeRelative(0, capsuleTop) }
+        }
+    }
+}
+
+/** 胶囊本体：圆角 + 阴影，背景色与系统栏内边距由外层决定。 */
+@Composable
+private fun CapsuleSurface(
+    content: @Composable () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = ChromeCapsuleShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shadowElevation = 6.dp,
+    ) {
+        content()
+    }
+}
+
+/** 胶囊左右留白：栏位不贴着屏幕边缘。 */
 private val ChromeCapsuleHorizontalPadding = 12.dp
 
-/** 胶囊与系统栏之间的间隙。 */
+/** 胶囊与系统栏、页面内容之间的间隙。 */
 private val ChromeCapsuleGap = 8.dp
 
 private val ChromeCapsuleShape = RoundedCornerShape(28.dp)
@@ -225,3 +246,5 @@ private val ChromeFallbackDragDistance = 88.dp
 
 /** 松手时超过这个速度（按 dp/s 折算）就顺着甩动方向收起或展开。 */
 private val ChromeSettleVelocity = 600.dp
+
+private const val BottomCapsuleContent = "bottomCapsuleContent"

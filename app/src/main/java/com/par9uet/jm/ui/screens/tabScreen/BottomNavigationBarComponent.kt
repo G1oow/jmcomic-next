@@ -53,7 +53,7 @@ fun BottomNavigationBarComponent(
     )
 
     AnimatedVisibility(visible = currentRoute != "login") {
-        FloatingChromeCapsule(state = chromeState, fromTop = false, inset = inset) {
+        CollapsingBottomCapsule(state = chromeState, inset = inset) {
             NavigationBar(
                 // 背景与系统栏内边距都由外层悬浮胶囊提供，底栏自身保持透明。
                 containerColor = Color.Transparent,

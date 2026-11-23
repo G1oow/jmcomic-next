@@ -18,8 +18,7 @@ class TabChromeStateTest {
         fallbackDragDistancePx = 100f,
         settleVelocityPx = 1_000f,
     ).apply {
-        updateTravel(fromTop = true, travelPx = 200f)
-        updateTravel(fromTop = false, travelPx = 200f)
+        updateDragDistance(200f)
     }
 
     private fun TabChromeState.scroll(deltaY: Float, source: NestedScrollSource = NestedScrollSource.UserInput) {

@@ -35,9 +35,11 @@ private fun TabTopBar(title: String) {
     )
 }
 
+/**
+ * 固定的悬浮胶囊顶栏：常驻页面最上方，不随滚动隐藏，页面高度也始终给它留着位置。
+ */
 @Composable
 fun TopBarComponent(
-    chromeState: TabChromeState,
     inset: Dp,
 ) {
     val tabNavController = LocalTabNavController.current
@@ -49,7 +51,7 @@ fun TopBarComponent(
         "user" -> "个人中心"
         else -> return
     }
-    FloatingChromeCapsule(state = chromeState, fromTop = true, inset = inset) {
+    FloatingTopCapsule(inset = inset) {
         TabTopBar(title)
     }
 }
