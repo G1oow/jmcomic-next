@@ -3,7 +3,6 @@ package com.par9uet.jm.ui.screens
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import androidx.core.content.FileProvider
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -73,45 +72,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import com.google.gson.JsonArray
-import com.google.gson.JsonObject
-import com.google.gson.JsonParser
+import com.par9uet.jm.store.AppRelease
 import com.par9uet.jm.store.AppUpdateDownloadManager
 import com.par9uet.jm.store.AppUpdateDownloadRequest
 import com.par9uet.jm.store.AppUpdateDownloadStatus
+import com.par9uet.jm.store.AppUpdateManager
 import com.par9uet.jm.store.formatBytes
-import com.par9uet.jm.network.DohManager
 import com.par9uet.jm.ui.components.CommonScaffold
+import com.par9uet.jm.utils.APP_UPDATE_RELEASES_URL
+import com.par9uet.jm.utils.APP_UPDATE_REPO_URL
 import com.par9uet.jm.utils.MarkdownText
-import kotlinx.coroutines.Dispatchers
+import com.par9uet.jm.utils.compareVersion
+import com.par9uet.jm.utils.installApk
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import org.koin.compose.getKoin
 import java.io.File
 import kotlin.math.roundToInt
 
-private const val GITHUB_RELEASE_API =
-    "https://api.github.com/repos/HongShi2333/jmcomic-next/releases/latest"
-private const val GITHUB_RELEASE_URL =
-    "https://github.com/HongShi2333/jmcomic-next/releases"
-private const val GITHUB_REPO_URL =
-    "https://github.com/HongShi2333/jmcomic-next"
-
-private data class GithubRelease(
-    val version: String,
-    val name: String,
-    val url: String,
-    val body: String,
-    val downloadUrl: String,
-    val fileName: String
-)
-
 private sealed class UpdateState {
     object Idle : UpdateState()
     object Checking : UpdateState()
-    data class Success(val release: GithubRelease, val hasUpdate: Boolean) : UpdateState()
+    data class Success(val release: AppRelease, val hasUpdate: Boolean) : UpdateState()
     data class Error(val message: String) : UpdateState()
 }
 
@@ -131,7 +112,7 @@ fun AboutScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item { AppHeaderCard(appIcon, appVersion, versionCode) }
-            item { RepoCard(onOpenRepo = { uriHandler.openUri(GITHUB_REPO_URL) }) }
+            item { RepoCard(onOpenRepo = { uriHandler.openUri(APP_UPDATE_REPO_URL) }) }
             item { TechCard() }
         }
     }
@@ -221,7 +202,7 @@ private fun RepoCard(onOpenRepo: () -> Unit) {
             )
             SelectionContainer {
                 Text(
-                    text = GITHUB_REPO_URL,
+                    text = APP_UPDATE_REPO_URL,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
@@ -310,7 +291,7 @@ private fun TechRow(name: String, desc: String) {
 @Composable
 fun CheckUpdateScreen(
     updateDownloadManager: AppUpdateDownloadManager = getKoin().get(),
-    dohManager: DohManager = getKoin().get(),
+    appUpdateManager: AppUpdateManager = getKoin().get(),
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -320,13 +301,13 @@ fun CheckUpdateScreen(
     val coroutineScope = rememberCoroutineScope()
     val downloadState by updateDownloadManager.state.collectAsState()
     var updateState by remember { mutableStateOf<UpdateState>(UpdateState.Idle) }
-    var visibleRelease by remember { mutableStateOf<GithubRelease?>(null) }
+    var visibleRelease by remember { mutableStateOf<AppRelease?>(null) }
     var showDownloadDialog by remember { mutableStateOf(false) }
 
     fun checkUpdate() {
         updateState = UpdateState.Checking
         coroutineScope.launch {
-            val nextState = fetchLatestRelease(dohManager).fold(
+            val nextState = appUpdateManager.refresh().fold(
                 onSuccess = {
                     UpdateState.Success(
                         release = it,
@@ -683,7 +664,7 @@ private fun StatusRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReleaseDialog(
-    release: GithubRelease,
+    release: AppRelease,
     onCopyDownloadUrl: () -> Unit,
     onDismiss: () -> Unit,
     onDownload: () -> Unit
@@ -948,119 +929,6 @@ private fun UpdateDownloadDialog(
             }
         }
     }
-}
-
-private fun installApk(context: Context, savedPath: String) {
-    val file = File(savedPath)
-    if (!file.exists()) {
-        android.widget.Toast.makeText(
-            context,
-            "安装包文件不存在，请重新下载",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-        return
-    }
-    val intent = Intent(Intent.ACTION_VIEW).apply {
-        val uri = FileProvider.getUriForFile(
-            context,
-            "${context.packageName}.fileprovider",
-            file
-        )
-        setDataAndType(uri, "application/vnd.android.package-archive")
-        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-    }
-    runCatching {
-        context.startActivity(intent)
-    }.onFailure { error ->
-        com.par9uet.jm.utils.logError("AppUpdate", "打开系统安装器失败: ${error.stackTraceToString()}")
-        android.widget.Toast.makeText(
-            context,
-            "打开安装器失败：${error.message ?: "未知错误"}",
-            android.widget.Toast.LENGTH_LONG
-        ).show()
-    }
-}
-
-private suspend fun fetchLatestRelease(dohManager: DohManager): Result<GithubRelease> = withContext(Dispatchers.IO) {
-    runCatching {
-        val request = Request.Builder()
-            .url(GITHUB_RELEASE_API)
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "jmcomic-next-android")
-            .build()
-        OkHttpClient.Builder()
-            .dns(dohManager)
-            .build()
-            .newCall(request)
-            .execute()
-            .use { response ->
-            if (!response.isSuccessful) {
-                error("GitHub 返回 ${response.code}")
-            }
-            val body = response.body?.string() ?: error("GitHub 返回空响应")
-            val json = JsonParser.parseString(body).asJsonObject
-            val tagName = json.stringOrEmpty("tag_name")
-            val name = json.stringOrEmpty("name")
-            val url = json.stringOrEmpty("html_url")
-            val version = normalizeVersion(tagName.ifBlank { name })
-            if (version.isBlank()) {
-                error("未读取到 Release 版本号")
-            }
-            val asset = selectApkAsset(json.getAsJsonArray("assets"), version)
-            GithubRelease(
-                version = version,
-                name = name,
-                url = url.ifBlank { "$GITHUB_RELEASE_URL/tag/$tagName" },
-                body = json.stringOrEmpty("body"),
-                downloadUrl = asset?.downloadUrl.orEmpty(),
-                fileName = asset?.name.orEmpty()
-            )
-        }
-    }
-}
-
-private data class ReleaseAsset(val name: String, val downloadUrl: String)
-
-private fun selectApkAsset(assets: JsonArray?, version: String): ReleaseAsset? {
-    if (assets == null) return null
-    val apkAssets = assets.mapNotNull { item ->
-        val obj = item.asJsonObject
-        val name = obj.stringOrEmpty("name")
-        val url = obj.stringOrEmpty("browser_download_url")
-        if (name.endsWith(".apk", ignoreCase = true) && url.isNotBlank()) {
-            ReleaseAsset(name, url)
-        } else {
-            null
-        }
-    }
-    return apkAssets.firstOrNull {
-        it.name.contains("jm-mobile_v$version", ignoreCase = true)
-    } ?: apkAssets.firstOrNull()
-}
-
-private fun JsonObject.stringOrEmpty(key: String): String {
-    return get(key)?.takeIf { !it.isJsonNull }?.asString.orEmpty()
-}
-
-private fun normalizeVersion(value: String): String {
-    return value.trim()
-        .removePrefix("v")
-        .removePrefix("V")
-        .substringBefore(" ")
-        .substringBefore("-")
-}
-
-private fun compareVersion(left: String, right: String): Int {
-    val leftParts = normalizeVersion(left).split(".").map { it.toIntOrNull() ?: 0 }
-    val rightParts = normalizeVersion(right).split(".").map { it.toIntOrNull() ?: 0 }
-    val count = maxOf(leftParts.size, rightParts.size)
-    for (index in 0 until count) {
-        val l = leftParts.getOrElse(index) { 0 }
-        val r = rightParts.getOrElse(index) { 0 }
-        if (l != r) return l.compareTo(r)
-    }
-    return 0
 }
 
 @Suppress("DEPRECATION")
