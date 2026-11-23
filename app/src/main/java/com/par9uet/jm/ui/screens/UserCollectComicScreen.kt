@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -107,7 +108,7 @@ import com.par9uet.jm.ui.components.PullRefreshAndLoadMoreGrid
 import com.par9uet.jm.ui.components.rememberComicPageGridState
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
 import com.par9uet.jm.ui.components.adaptiveDialogMaxHeight
-import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
+import com.par9uet.jm.ui.screens.tabScreen.TabHeader
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
@@ -248,6 +249,12 @@ fun UserCollectComicScreen(
         if (isLogin) {
             userViewModel.preloadFavorites(context, imageLoader, foreground = true)
         }
+    }
+
+    // tab 模式下收藏页顶部固定着搜索/筛选栏，状态栏空间由外层预留，
+    // 列表头部只画标题，不再重复顶开一个状态栏高度。
+    val listHeader: (@Composable () -> Unit)? = if (useScaffold) null else {
+        { TabHeader(inset = 0.dp) }
     }
 
     // 主体内容：搜索栏 + 收藏夹 Chip + 排序 + 漫画网格
@@ -451,7 +458,7 @@ fun UserCollectComicScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.Top),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
                         contentPadding = PaddingValues(14.dp),
-                        header = LocalTabHeader.current,
+                        header = listHeader,
                         enablePullRefresh = false,
                         pageState = pageState,
                         onPageChange = { page ->
@@ -527,7 +534,13 @@ fun UserCollectComicScreen(
             }
         }
     } else {
-        Column(modifier = Modifier.fillMaxSize()) {
+        // 顶部是固定的搜索/筛选栏，贴到屏幕上边会被状态栏压住：整页先留出状态栏高度，
+        // 搜索栏、下拉刷新指示器和排序栏都从状态栏下面开始。
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
             Box(
                 modifier = Modifier
                     .weight(1f)
