@@ -116,13 +116,15 @@ jobs:
             echo "应用内的「检查更新」会读取这个 Release。"
           } > "$notes"
 
-          if [ -f CHANGELOG.md ] && grep -qE "^#+ *v${VERSION_NAME}( |$)" CHANGELOG.md; then
+          changelog=""
+          if [ -f CHANGELOG.md ]; then changelog=CHANGELOG.md; elif [ -f CHANGELOG ]; then changelog=CHANGELOG; fi
+          if [ -n "$changelog" ] && grep -qE "^#+ *v${VERSION_NAME}( |$)" "$changelog"; then
             echo >> "$notes"
             awk -v pat="^#+ *v${VERSION_NAME}( |$)" '
               $0 ~ pat { inside = 1; next }
               inside && /^#+ / { exit }
               inside { print }
-            ' CHANGELOG.md >> "$notes"
+            ' "$changelog" >> "$notes"
           fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
