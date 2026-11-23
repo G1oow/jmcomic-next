@@ -56,6 +56,7 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
     verticalArrangement: Arrangement.Vertical = Arrangement.spacedBy(10.dp, Alignment.Top),
     horizontalArrangement: Arrangement.HorizontalOrVertical = Arrangement.spacedBy(10.dp),
     contentPadding: PaddingValues = PaddingValues(10.dp),
+    header: (@Composable () -> Unit)? = null,
     itemVisible: (item: T) -> Boolean = { true },
     enablePullRefresh: Boolean = true,
     pageState: ComicPageState? = null,
@@ -81,6 +82,9 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
             horizontalArrangement = horizontalArrangement,
             contentPadding = contentPadding
         ) {
+            header?.let { headerContent ->
+                item(span = { GridItemSpan(maxLineSpan) }) { headerContent() }
+            }
             if (lazyPagingItems.itemCount == 0 && !isRefreshing) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(

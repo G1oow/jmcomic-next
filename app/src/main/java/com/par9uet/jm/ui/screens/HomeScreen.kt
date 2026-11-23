@@ -68,6 +68,7 @@ import com.par9uet.jm.ui.components.ComicSkeleton
 import com.par9uet.jm.ui.components.ScrollToTopButton
 import com.par9uet.jm.ui.components.TabSkeleton
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.state.rememberTabIndexState
 import com.par9uet.jm.ui.viewModel.ComicViewModel
 import com.par9uet.jm.ui.viewModel.UserViewModel
@@ -297,6 +298,10 @@ fun HomeScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)
             ) {
+                item(span = { GridItemSpan(maxLineSpan) }) {
+                    // 顶栏和漫画列表同一条滚动流：滑动时一起滚出屏幕。
+                    LocalTabHeader.current?.invoke()
+                }
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         HomeHeader(

@@ -1,14 +1,13 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -25,14 +24,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.par9uet.jm.store.LocalSettingManager
+import com.par9uet.jm.store.UserManager
+import com.par9uet.jm.ui.components.LoginRequiredPlaceholder
 import com.par9uet.jm.ui.screens.AiChatScreen
 import com.par9uet.jm.ui.screens.HomeScreen
 import com.par9uet.jm.ui.screens.LocalMainNavController
 import com.par9uet.jm.ui.screens.UserCollectComicScreen
 import com.par9uet.jm.ui.screens.UserScreen
-import com.par9uet.jm.store.LocalSettingManager
-import com.par9uet.jm.store.UserManager
-import com.par9uet.jm.ui.components.LoginRequiredPlaceholder
 import com.par9uet.jm.ui.theme.LocalAppMotion
 import org.koin.compose.getKoin
 
@@ -67,65 +66,63 @@ fun TabScreen(
     }
     CompositionLocalProvider(
         LocalTabNavController provides tabNavController,
+        // 顶栏交给页面放进列表首位：它和内容处在同一条滚动流，滑动时一起滚走。
+        LocalTabHeader provides { TabHeader(inset = statusBarInset) },
     ) {
-        BoxWithConstraints {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
             val useNavigationRail = maxWidth >= 700.dp
             val hideBottomCapsule = currentRoute == "ai" && imeVisible
             val showBottomCapsule = !useNavigationRail && !hideBottomCapsule
-            // 内容为悬浮胶囊让出的底部净空：只保留系统导航栏内边距 + 展开态胶囊所需空间，
-            // 收起时由 Modifier.bottomChromeClearance 连续收敛到只剩系统栏内边距。
-            val clearancePx = with(density) {
-                (navigationBarInset + if (showBottomCapsule) ChromeCapsuleClearance else 0.dp)
-                    .roundToPx()
+            // 有列表头部的页面自己带状态栏内边距，其余页面在这里补回，避免内容钻到系统栏下。
+            val pageRendersHeader = when (currentRoute) {
+                "home", "user" -> true
+                "collect" -> isLogin
+                else -> false
             }
-            // 底层：固定顶栏 + 页面内容。顶栏和列表同层，永远占住页面最上方，不参与滚动。
-            Column(modifier = Modifier.fillMaxSize()) {
-                TopBarComponent(inset = statusBarInset)
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .nestedScroll(chromeState.nestedScrollConnection)
-                        .bottomChromeClearance(chromeState, clearancePx)
+            // 底层：页面内容。顶栏由各页列表自己在首位渲染，这里不再有固定栏位。
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (pageRendersHeader) Modifier else Modifier.statusBarsPadding())
+                    .nestedScroll(chromeState.nestedScrollConnection)
+            ) {
+                if (useNavigationRail) {
+                    NavigationRailComponent()
+                }
+                NavHost(
+                    modifier = Modifier.weight(1f),
+                    navController = tabNavController,
+                    enterTransition = { motion.enter() },
+                    exitTransition = { motion.exit() },
+                    popEnterTransition = { motion.enter(back = true) },
+                    popExitTransition = { motion.exit(back = true) },
+                    startDestination = tabName
                 ) {
-                    if (useNavigationRail) {
-                        NavigationRailComponent()
+                    composable("home") {
+                        HomeScreen()
                     }
-                    NavHost(
-                        modifier = Modifier.weight(1f),
-                        navController = tabNavController,
-                        enterTransition = { motion.enter() },
-                        exitTransition = { motion.exit() },
-                        popEnterTransition = { motion.enter(back = true) },
-                        popExitTransition = { motion.exit(back = true) },
-                        startDestination = tabName
-                    ) {
-                        composable("home") {
-                            HomeScreen()
-                        }
-                        composable("user") {
-                            UserScreen()
-                        }
-                        composable("ai") {
-                            AiChatScreen()
-                        }
-                        composable("collect") {
-                            if (isLogin) {
-                                UserCollectComicScreen(
-                                    useScaffold = false,
-                                )
-                            } else {
-                                // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
-                                LoginRequiredPlaceholder(
-                                    message = "登录后可查看收藏、历史与签到",
-                                    onLogin = { mainNavController.navigate("login") },
-                                )
-                            }
+                    composable("user") {
+                        UserScreen()
+                    }
+                    composable("ai") {
+                        AiChatScreen()
+                    }
+                    composable("collect") {
+                        if (isLogin) {
+                            UserCollectComicScreen(
+                                useScaffold = false,
+                            )
+                        } else {
+                            // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
+                            LoginRequiredPlaceholder(
+                                message = "登录后可查看收藏、历史与签到",
+                                onLogin = { mainNavController.navigate("login") },
+                            )
                         }
                     }
                 }
             }
-            // 上层：悬浮胶囊底栏。浮在内容之上，滚动时跟手收起，不占布局。
+            // 上层：悬浮胶囊底栏。内容直接铺到屏幕底部，胶囊只是盖在上面。
             if (showBottomCapsule) {
                 BottomNavigationBarComponent(
                     chromeState = chromeState,
