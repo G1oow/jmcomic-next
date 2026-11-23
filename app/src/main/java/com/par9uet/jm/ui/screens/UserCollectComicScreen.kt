@@ -107,7 +107,6 @@ import com.par9uet.jm.ui.components.PullRefreshAndLoadMoreGrid
 import com.par9uet.jm.ui.components.rememberComicPageGridState
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
 import com.par9uet.jm.ui.components.adaptiveDialogMaxHeight
-import com.par9uet.jm.ui.components.LocalTabChromeActive
 import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.store.LocalSettingManager
@@ -433,7 +432,7 @@ fun UserCollectComicScreen(
                             .weight(1f)
                             .fillMaxWidth()
                     )
-                    if (pageState.enabled && !LocalTabChromeActive.current) {
+                    if (pageState.enabled) {
                         ComicPaginationBar(
                             state = pageState,
                             onPageChange = userViewModel.collectPagination::selectPage,

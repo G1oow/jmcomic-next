@@ -1,6 +1,5 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
@@ -23,7 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.Velocity
@@ -58,17 +56,6 @@ class TabChromeState internal constructor(
     /** 最近一次拖动的方向：1f 收起，-1f 展开，0f 本次手势尚未拖动。 */
     private var dragDirection = 0f
 
-    /** 实测胶囊高度：带分页行时胶囊更高，收起行程跟着变。 */
-    private var measuredDragDistancePx by mutableFloatStateOf(0f)
-
-    /** 胶囊测量完成后回报自身高度，手指滑过这段距离正好收起到底。 */
-    internal fun updateDragDistance(distancePx: Float) {
-        if (measuredDragDistancePx != distancePx) measuredDragDistancePx = distancePx
-    }
-
-    private val resolvedDragDistancePx: Float
-        get() = measuredDragDistancePx.takeIf { it > 0f } ?: dragDistancePx
-
     /** 绘制阶段读取，进度变化只重绘，不重组。 */
     val progress: Float
         get() = progressState
@@ -97,7 +84,7 @@ class TabChromeState internal constructor(
         settleJob?.cancel()
         settleJob = null
         dragDirection = if (deltaPx > 0f) 1f else -1f
-        val next = (progressState + deltaPx / resolvedDragDistancePx).coerceIn(0f, 1f)
+        val next = (progressState + deltaPx / dragDistancePx).coerceIn(0f, 1f)
         if (next != progressState) progressState = next
     }
 
@@ -169,8 +156,6 @@ fun FloatingBottomCapsule(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    // 实测胶囊高度：带分页条时胶囊会变高，固定行程会收不干净。
-    var capsuleHeightPx by remember { mutableFloatStateOf(0f) }
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -184,20 +169,13 @@ fun FloatingBottomCapsule(
         Surface(
             modifier = Modifier
                 .widthIn(max = ChromeCapsuleMaxWidth)
-                .animateContentSize()
-                .onSizeChanged {
-                    capsuleHeightPx = it.height.toFloat()
-                    state.updateDragDistance(it.height.toFloat())
-                }
                 .graphicsLayer {
                     // 行程在绘制阶段算，进度变化不触发重组和重测量。
-                    val height = if (capsuleHeightPx > 0f) {
-                        capsuleHeightPx
-                    } else {
-                        ChromeCapsuleHeight.toPx()
-                    }
-                    translationY = state.progress *
-                        (height + inset.toPx() + ChromeCapsuleBottomMargin.toPx() * 2)
+                    translationY = state.progress * (
+                        ChromeCapsuleHeight +
+                            inset +
+                            ChromeCapsuleBottomMargin * 2
+                        ).toPx()
                 },
             shape = ChromeCapsuleStadium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
