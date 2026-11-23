@@ -221,7 +221,7 @@ VERSION_NAME=1.2.6
 
 ### CI
 
-`.github/workflows/android-release.yml`：`workflow_dispatch` 或推送 `v*` 标签时构建 Release APK，产物上传为 `jm-mobile-release` artifact（保留 14 天）。需要仓库 Secrets：`JM_RELEASE_KEYSTORE_BASE64`（keystore 的 base64）、`JM_RELEASE_STORE_PASSWORD`、`JM_RELEASE_KEY_ALIAS`、`JM_RELEASE_KEY_PASSWORD`。
+`.github/workflows/android-release.yml`：合并进 `main`、推送 `v*` 标签或手动 `workflow_dispatch` 时构建 Release APK；只改动 `*.md` 的推送不触发。产物上传为 `jm-mobile-release` artifact（保留 14 天）。需要仓库 Secrets：`JM_RELEASE_KEYSTORE_BASE64`（keystore 的 base64）、`JM_RELEASE_STORE_PASSWORD`、`JM_RELEASE_KEY_ALIAS`、`JM_RELEASE_KEY_PASSWORD`。
 
 - 修 CI 时优先在分支上 `gh workflow run ... --ref <branch>` 验证，再合入 `main`。
 - 不要为了「让流水线变绿」而放宽 `JM_REQUIRE_RELEASE_SIGNING` 或使用 debug 签名。

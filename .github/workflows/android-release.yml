@@ -3,8 +3,13 @@ name: Release APK
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'v*'
+    # 只改文档的合并没必要占用构建时间
+    paths-ignore:
+      - '**.md'
 
 permissions:
   contents: read
