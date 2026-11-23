@@ -26,6 +26,9 @@ val LocalTabHeader = staticCompositionLocalOf<(@Composable () -> Unit)?> { null 
 /**
  * 页面标题：就是左上角一行文字，跟着列表滚走。
  *
+ * 不额外加左右内边距：横向缩进交给页面的内容边距（网格 12dp / 卡片列表 16dp），
+ * 标题才能和下面的卡片、以及悬浮胶囊的侧边距对齐。
+ *
  * @param inset 状态栏高度。
  */
 @Composable
@@ -42,8 +45,7 @@ fun TabHeader(
     } ?: return
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 20.dp, top = inset + 12.dp, bottom = 12.dp)
+            .padding(top = inset + 12.dp, bottom = 12.dp)
     ) {
         Text(
             text = title,

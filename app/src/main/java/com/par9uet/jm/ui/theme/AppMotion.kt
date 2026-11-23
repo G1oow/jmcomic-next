@@ -32,14 +32,17 @@ data class AppMotionPolicy(val enabled: Boolean, val enterMs: Int, val exitMs: I
      * 只让进入页做位移，退出页纯淡出：两个页面同时朝不同方向滑动会让切换看着发飘，
      * 也等于每次切换多画一层位移。位移距离取屏宽的 1/12、封顶 72dp，
      * 只用来交代方向，不喧宾夺主。
+     *
+     * @param fromLeft 目标页在导航条上靠右、是从它左边那一项点过来的时候：
+     * 页面从左边滑进来，其余情况从右边滑进来。
      */
-    fun enter(back: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
+    fun enter(fromLeft: Boolean = false): EnterTransition = if (!enabled) EnterTransition.None else
         fadeIn(tween(enterMs, easing = motionEasing)) +
             slideInHorizontally(tween(enterMs, easing = motionEasing)) { width ->
-                (width / 12).coerceAtMost(72) * if (back) -1 else 1
+                (width / 12).coerceAtMost(72) * if (fromLeft) -1 else 1
             }
 
-    fun exit(back: Boolean = false): ExitTransition = if (!enabled) ExitTransition.None else
+    fun exit(): ExitTransition = if (!enabled) ExitTransition.None else
         fadeOut(tween(exitMs, easing = motionEasing))
 }
 

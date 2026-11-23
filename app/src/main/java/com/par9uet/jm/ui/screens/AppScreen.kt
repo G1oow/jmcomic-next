@@ -47,8 +47,8 @@ fun AppScreen(
             navController = mainNavController,
             enterTransition = { motion.enter() },
             exitTransition = { motion.exit() },
-            popEnterTransition = { motion.enter(back = true) },
-            popExitTransition = { motion.exit(back = true) },
+            popEnterTransition = { motion.enter(fromLeft = true) },
+            popExitTransition = { motion.exit() },
 //            startDestination = "comicQuickSearch/百合"
 //            startDestination = "appLocalSetting"
             startDestination = "tab/home",

@@ -96,10 +96,17 @@ fun TabScreen(
                     NavHost(
                         modifier = Modifier.weight(1f),
                         navController = tabNavController,
-                        enterTransition = { motion.enter() },
+                        enterTransition = {
+                            motion.enter(
+                                fromLeft = entersFromLeft(
+                                    initialState.destination.route,
+                                    targetState.destination.route,
+                                )
+                            )
+                        },
                         exitTransition = { motion.exit() },
-                        popEnterTransition = { motion.enter(back = true) },
-                        popExitTransition = { motion.exit(back = true) },
+                        popEnterTransition = { motion.enter(fromLeft = true) },
+                        popExitTransition = { motion.exit() },
                         startDestination = tabName
                     ) {
                         composable("home") {
@@ -146,4 +153,17 @@ fun TabScreen(
 
 val LocalTabNavController = staticCompositionLocalOf<NavHostController> {
     error("none")
+}
+
+/** 底栏顺序，只用来判断切页时页面该从哪边滑进来。 */
+private val TabRoutes = listOf("home", "ai", "collect", "user")
+
+/**
+ * 目标页在来源页右边，说明是从左边那一项点过来的，页面就从左边滑进来；
+ * 反过来从右边滑进来。最右的「个人中心」因此只会从左边入场。
+ */
+internal fun entersFromLeft(initialRoute: String?, targetRoute: String?): Boolean {
+    val initial = TabRoutes.indexOf(initialRoute)
+    val target = TabRoutes.indexOf(targetRoute)
+    return initial >= 0 && target >= 0 && target > initial
 }
