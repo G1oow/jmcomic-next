@@ -8,6 +8,7 @@ import com.par9uet.jm.repository.AiChatRepository
 import com.par9uet.jm.repository.impl.RemoteSettingRepositoryImpl
 import com.par9uet.jm.storage.AiChatStorage
 import com.par9uet.jm.storage.CookieStorage
+import com.par9uet.jm.storage.FastDomainStorage
 import com.par9uet.jm.storage.HistorySearchStorage
 import com.par9uet.jm.storage.LocalSettingStorage
 import com.par9uet.jm.storage.PersonaStorage
@@ -51,6 +52,7 @@ val appModule = module {
     single { SecureStorage(get()) }
     single { UserStorage(get()) }
     single { CookieStorage(get()) }
+    single { FastDomainStorage(get()) }
     single { LocalSettingStorage(get()) }
     single { HistorySearchStorage(get()) }
     single { ReadHistoryStorage(get()) }

@@ -13,7 +13,7 @@ import org.koin.dsl.bind
 import org.koin.dsl.module
 
 val comicModule = module {
-    single { EmbeddedClientManager(get(), get()) }
+    single { EmbeddedClientManager(get(), get(), get()) }
     single { ComicRepositoryImpl(get(), get(), get(), get(), get(), get(), get()) } bind ComicRepository::class
     single { ComicTagCacheStorage(get()) }
     single { ComicTagFilter(get<ComicRepository>()::getComicDetail, get<ComicTagCacheStorage>()) }
