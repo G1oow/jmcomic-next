@@ -35,7 +35,7 @@ val retrofitModule = module {
     single { BaseUrlInterceptor(get()) }
     single { TokenInterceptor(get()) }
     single { InitInterceptor(get()) }
-    single { ToastInterceptor(get()) }
+    single { ToastInterceptor(get(), get()) }
     single { ResponseConverterFactory(get()) }
     single { PrimitiveToRequestBodyConverterFactory() }
     single { ScalarsConverterFactory.create() }
