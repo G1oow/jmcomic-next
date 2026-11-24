@@ -1,5 +1,6 @@
 package com.par9uet.jm.retrofit.service
 
+import com.par9uet.jm.retrofit.annotation.SilentHttpError
 import com.par9uet.jm.retrofit.model.CollectComicResponse
 import com.par9uet.jm.retrofit.model.ComicDetailResponse
 import com.par9uet.jm.retrofit.model.ComicListResponse
@@ -37,6 +38,8 @@ interface ComicService {
         @Part("aid") id: Int,
     ): ResponseWrapper<CollectComicResponse>
 
+    // 首页失败会在页面上给出重试态；偏好推荐更属于可降级数据，不需要全局提示
+    @SilentHttpError
     @GET("promote")
     suspend fun getHomeSwiperComicList(): ResponseWrapper<List<HomeSwiperComicListItemResponse>>
 
