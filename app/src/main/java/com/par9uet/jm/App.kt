@@ -75,9 +75,8 @@ fun App(
     var sessionNsfwDismissed by remember { mutableStateOf(false) }
     // 首次启动引导
     var showOnboarding by remember { mutableStateOf(false) }
-    // 应用锁通过后才启动开屏动画；首页首批数据到达后自动关闭。
-    var splashStarted by rememberSaveable { mutableStateOf(false) }
-    var splashVisible by rememberSaveable { mutableStateOf(false) }
+    // 开屏过渡：「跳过」按钮一秒后出现，首页首批数据到达或用户点击跳过时结束。
+    var splashSkipped by rememberSaveable { mutableStateOf(false) }
     var splashSkipVisible by rememberSaveable { mutableStateOf(false) }
     val homeComicState by comicViewModel.homeComicState.collectAsState()
     val appUpdateState by appUpdateManager.state.collectAsState()
@@ -105,41 +104,22 @@ fun App(
         }
         globalViewModel.init()
     }
-    // 解锁后启动首页预加载过渡。超过一秒仍没有首页数据时允许用户跳过等待。
-    LaunchedEffect(
-        settingsLoaded,
-        showOnboarding,
-        hasUnlockedOnce,
-        localSetting.splashLoadingEnabled,
-        splashVisible,
-        splashSkipVisible,
-    ) {
-        if (!settingsLoaded || showOnboarding || !hasUnlockedOnce) {
-            return@LaunchedEffect
-        }
-        if (!localSetting.splashLoadingEnabled) {
-            splashStarted = true
-            splashVisible = false
-            splashSkipVisible = false
-            return@LaunchedEffect
-        }
-        if (!splashStarted) {
-            splashStarted = true
-            splashVisible = true
-        }
-        if (splashVisible && !splashSkipVisible) {
-            kotlinx.coroutines.delay(1000L)
-            if (splashVisible) {
-                splashSkipVisible = true
-            }
-        }
-    }
+    // 开屏过渡是否生效：同步算出结果，避免主界面先渲染一帧再被加载页盖住。
+    val splashActive = !splashSkipped &&
+            localSetting.splashLoadingEnabled &&
+            homeComicState.list.isEmpty() &&
+            settingsLoaded &&
+            !showOnboarding &&
+            hasUnlockedOnce
 
-    LaunchedEffect(homeComicState.list.isNotEmpty()) {
-        if (homeComicState.list.isNotEmpty()) {
-            splashVisible = false
+    // 超过一秒仍没有首页数据时允许用户跳过等待
+    LaunchedEffect(splashActive) {
+        if (!splashActive) {
             splashSkipVisible = false
+            return@LaunchedEffect
         }
+        kotlinx.coroutines.delay(1000L)
+        if (!splashSkipped) splashSkipVisible = true
     }
     // 开启应用锁立即进入核验；关闭时立即解除。首次加载也由这里进行安全兜底。
     LaunchedEffect(settingsLoaded, localSetting.appLockEnabled) {
@@ -301,8 +281,8 @@ fun App(
         return
     }
 
-    // 设置尚未加载完成时保留初始化页；应用锁通过后的开屏动画以覆盖层显示，避免阻塞主页面。
-    if (!settingsLoaded) {
+    // 设置或解锁状态还没就绪时保持加载页，避免主界面先闪一帧再被遮住。
+    if (!settingsLoaded || !hasUnlockedOnce) {
         LoadingScreen()
         return
     }
@@ -350,13 +330,10 @@ fun App(
                 .imePadding()
             )
         }
-        if (!showAppLock && splashVisible) {
+        if (!showAppLock && splashActive) {
             LoadingScreen(
                 showSkipButton = splashSkipVisible,
-                onSkip = {
-                    splashVisible = false
-                    splashSkipVisible = false
-                }
+                onSkip = { splashSkipped = true }
             )
         }
         if (showNsfwDialog) {
