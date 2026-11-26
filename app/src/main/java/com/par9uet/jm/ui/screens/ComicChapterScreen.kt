@@ -1,6 +1,7 @@
 package com.par9uet.jm.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -17,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,42 +75,63 @@ fun ComicChapterScreen(
     }
 
     CommonScaffold(title = "选择章节") {
-        LazyVerticalGrid(
-            state = gridState,
-            contentPadding = PaddingValues(10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            columns = GridCells.Fixed(4)
-        ) {
-            itemsIndexed(comicChapterList, key = { _, item -> item.id }) { index, item ->
-                val read = item.id in readChapterIds
-                val isCurrent = localSetting.chapterReadingMemoryEnabled &&
-                    currentChapterId > 0 && item.id == currentChapterId
-                AssistChip(
-                    modifier = Modifier.fillMaxSize(),
-                    colors = when {
-                        isCurrent -> AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+        when {
+            comicDetailState.isLoading && comicChapterList.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            comicChapterList.isEmpty() -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "暂无可选章节",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            else -> {
+                LazyVerticalGrid(
+                    state = gridState,
+                    contentPadding = PaddingValues(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    columns = GridCells.Fixed(4)
+                ) {
+                    itemsIndexed(comicChapterList, key = { _, item -> item.id }) { index, item ->
+                        val read = item.id in readChapterIds
+                        val isCurrent = localSetting.chapterReadingMemoryEnabled &&
+                            currentChapterId > 0 && item.id == currentChapterId
+                        AssistChip(
+                            modifier = Modifier.fillMaxSize(),
+                            colors = when {
+                                isCurrent -> AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    labelColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                read -> AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    labelColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                else -> AssistChipDefaults.assistChipColors()
+                            },
+                            onClick = {
+                                mainNavController.navigate("comicRead/${item.id}")
+                            },
+                            label = {
+                                Text(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    text = "第${index + 1}话",
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         )
-                        read -> AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
-                        else -> AssistChipDefaults.assistChipColors()
-                    },
-                    onClick = {
-                        mainNavController.navigate("comicRead/${item.id}")
-                    },
-                    label = {
-                        Text(
-                            modifier = Modifier.fillMaxWidth(),
-                            text = "第${index + 1}话",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
-                    })
+                    }
+                }
             }
         }
     }

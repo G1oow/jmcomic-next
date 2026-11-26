@@ -1,11 +1,8 @@
 package com.par9uet.jm.ui.components
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,11 +14,15 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.unit.dp
 import com.par9uet.jm.ui.pagingSource.ComicPageState
 import com.par9uet.jm.ui.pagingSource.COMIC_DISPLAY_PAGE_SIZE
@@ -55,12 +56,20 @@ fun ComicPaginationBar(
     modifier: Modifier = Modifier,
 ) {
     val motion = LocalAppMotion.current
+    val colorScheme = MaterialTheme.colorScheme
+    var previousPage by remember { mutableIntStateOf(state.page) }
+    val forward = state.page >= previousPage
+    SideEffect { previousPage = state.page }
+    val borderColor = remember(colorScheme.outlineVariant) {
+        colorScheme.outlineVariant.copy(alpha = 0.4f)
+    }
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         shape = MaterialTheme.shapes.extraLarge,
         color = MaterialTheme.colorScheme.surfaceContainerLow,
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -82,7 +91,7 @@ fun ComicPaginationBar(
             ) {
                 AnimatedContent(
                     targetState = state.pageCount?.let { "${state.page} / $it" } ?: "第 ${state.page} 页",
-                    transitionSpec = { fadeIn(tween(motion.exitMs)) togetherWith fadeOut(tween(motion.exitMs)) },
+                    transitionSpec = { motion.pageLabelTransform(forward) },
                     label = "page-number",
                 ) { label ->
                     Text(label, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center)

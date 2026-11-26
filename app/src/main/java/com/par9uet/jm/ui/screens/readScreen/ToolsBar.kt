@@ -166,6 +166,7 @@ private fun PageProgressBar(
     onPageSelected: (index: Int) -> Unit
 ) {
     val primary = MaterialTheme.colorScheme.primary
+    val onPrimary = MaterialTheme.colorScheme.onPrimary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val disabledColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.32f)
     var size by remember { mutableStateOf(IntSize.Zero) }
@@ -230,7 +231,7 @@ private fun PageProgressBar(
                 center = Offset(activeWidth, centerY)
             )
             drawCircle(
-                color = Color.White.copy(alpha = 0.82f),
+                color = onPrimary.copy(alpha = 0.88f),
                 radius = 4.dp.toPx(),
                 center = Offset(activeWidth, centerY)
             )

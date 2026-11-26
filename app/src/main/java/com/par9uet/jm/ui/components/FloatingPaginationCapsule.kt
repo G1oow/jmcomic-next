@@ -1,5 +1,7 @@
 package com.par9uet.jm.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,7 +15,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +29,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.par9uet.jm.ui.pagingSource.ComicPageState
+import com.par9uet.jm.ui.theme.LocalAppMotion
 import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleBottomMargin
 import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleHeight
 import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleInnerInset
@@ -70,6 +77,10 @@ fun FloatingComicPaginationCapsule(
             ),
         contentAlignment = Alignment.Center,
     ) {
+        val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+        val borderColor = remember(outlineVariant) {
+            outlineVariant.copy(alpha = 0.45f)
+        }
         Surface(
             modifier = Modifier
                 .widthIn(max = ChromeCapsuleMaxWidth)
@@ -79,6 +90,9 @@ fun FloatingComicPaginationCapsule(
                 },
             shape = ChromeCapsuleStadium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 3.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, borderColor),
         ) {
             PagerCapsuleRow(state = state, onPageChange = onPageChange)
         }
@@ -90,6 +104,11 @@ private fun PagerCapsuleRow(
     state: ComicPageState,
     onPageChange: (Int) -> Unit,
 ) {
+    val motion = LocalAppMotion.current
+    var previousPage by remember { mutableIntStateOf(state.page) }
+    val forward = state.page >= previousPage
+    SideEffect { previousPage = state.page }
+    val pageLabel = if (state.isLoading) "…" else state.pageCount?.let { "${state.page} / $it" } ?: "第 ${state.page} 页"
     Row(
         modifier = Modifier.padding(ChromeCapsuleInnerInset),
         verticalAlignment = Alignment.CenterVertically,
@@ -100,14 +119,21 @@ private fun PagerCapsuleRow(
             emphasized = false,
             onClick = { onPageChange(state.page - 1) },
         )
-        Text(
-            text = if (state.isLoading) "…" else state.pageCount?.let { "${state.page} / $it" } ?: "第 ${state.page} 页",
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
+        AnimatedContent(
+            targetState = pageLabel,
+            transitionSpec = { motion.pageLabelTransform(forward) },
+            contentAlignment = Alignment.Center,
+            label = "floating-page-number",
             modifier = Modifier.widthIn(min = 64.dp).padding(horizontal = 6.dp),
-        )
+        ) { label ->
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
         CapsulePagerAction(
             label = "下一页",
             enabled = !state.isLoading && state.hasNext,

@@ -397,7 +397,8 @@ private fun CommentList(
         lazyPagingItems = commentLazyPagingItems,
         key = { it.id },
         columns = GridCells.Fixed(1),
-        enablePullRefresh = false
+        enablePullRefresh = false,
+        emptyText = "暂无评论",
     ) {
         CommentWithAction(
             comment = it,

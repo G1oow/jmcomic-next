@@ -2,6 +2,7 @@ package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -188,6 +189,10 @@ fun FloatingBottomCapsule(
             ),
         contentAlignment = Alignment.Center,
     ) {
+        val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+        val borderColor = remember(outlineVariant) {
+            outlineVariant.copy(alpha = 0.45f)
+        }
         Surface(
             modifier = Modifier
                 .widthIn(max = ChromeCapsuleMaxWidth)
@@ -197,6 +202,9 @@ fun FloatingBottomCapsule(
                 },
             shape = ChromeCapsuleStadium,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 3.dp,
+            shadowElevation = 6.dp,
+            border = BorderStroke(1.dp, borderColor),
         ) {
             content()
         }

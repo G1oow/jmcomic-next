@@ -487,8 +487,9 @@ fun BackupRestoreScreen(
                 text = { Text("密码或图形仍会强制保留，用于没有生物识别的手机或跨设备恢复。生物识别仅在当前设备安装中可用。") },
                 confirmButton = {
                     TextButton(onClick = {
+                        val hostActivity = activity ?: return@TextButton
                         authenticateWithBiometrics(
-                            activity = activity!!,
+                            activity = hostActivity,
                             title = "确认启用生物识别",
                             subtitle = "以后可用指纹或面容快捷验证此备份",
                             onSuccess = {
@@ -519,8 +520,9 @@ fun BackupRestoreScreen(
                 text = { Text("也可以改用创建备份时设置的密码或图形。") },
                 confirmButton = {
                     TextButton(onClick = {
+                        val hostActivity = activity ?: return@TextButton
                         authenticateWithBiometrics(
-                            activity = activity!!,
+                            activity = hostActivity,
                             title = "验证备份",
                             subtitle = "使用指纹或面容继续恢复",
                             onSuccess = { restoreStep = RestoreStep.SelectContent },

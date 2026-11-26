@@ -2,6 +2,7 @@ package com.par9uet.jm.ui.screens.tabScreen
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -37,8 +38,9 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.par9uet.jm.R
 import com.par9uet.jm.store.LocalSettingManager
+import com.par9uet.jm.ui.theme.LocalAppMotion
+import com.par9uet.jm.ui.theme.motionStandardEasing
 import org.koin.compose.getKoin
-/** 底栏胶囊里的一个入口。 */
 @Immutable
 private class CapsuleNavItem(
     val route: String,
@@ -106,12 +108,17 @@ private fun CapsuleNavRow(
 ) {
     val selectedIndex = items.indexOfFirst { it.route == currentRoute }.coerceAtLeast(0)
     val colorScheme = MaterialTheme.colorScheme
+    val motion = LocalAppMotion.current
     // 颜色只算一次：copy() 每次重组都会生成新的 Color，让修饰符白白重建。
-    val pillColor = remember(colorScheme.primary) { colorScheme.primary.copy(alpha = 0.11f) }
-    // 选中 pill 在槽位之间弹簧滑动：pill 铺满整个槽位，胶囊胖瘦比例由槽宽统一决定。
+    val pillColor = remember(colorScheme.primary) { colorScheme.primary.copy(alpha = 0.13f) }
+    // 选中 pill 在槽位之间弹簧滑动，系统关闭动画时立即切换。
     val pillOffset by animateDpAsState(
         targetValue = ChromeCapsuleSlotWidth * selectedIndex,
-        animationSpec = spring(dampingRatio = 0.9f, stiffness = 1_200f),
+        animationSpec = if (motion.enabled) {
+            spring(dampingRatio = 0.86f, stiffness = 900f)
+        } else {
+            snap()
+        },
         label = "capsuleSelectedPill",
     )
     Box(modifier = Modifier.padding(ChromeCapsuleInnerInset)) {
@@ -128,7 +135,11 @@ private fun CapsuleNavRow(
                 // 图标颜色跟着 pill 一起过渡，避免切换时颜色瞬跳。
                 val tint by animateColorAsState(
                     targetValue = if (selected) colorScheme.primary else colorScheme.onSurfaceVariant,
-                    animationSpec = tween(durationMillis = 160),
+                    animationSpec = if (motion.enabled) {
+                        tween(durationMillis = motion.exitMs, easing = motionStandardEasing)
+                    } else {
+                        snap()
+                    },
                     label = "capsuleIconTint",
                 )
                 Box(
@@ -194,7 +205,7 @@ fun NavigationRailComponent(
             icon = {
                 Icon(
                     painterResource(R.drawable.home_icon),
-                    contentDescription = "Home"
+                    contentDescription = "首页"
                 )
             },
             selected = currentRoute == "home",
@@ -218,7 +229,7 @@ fun NavigationRailComponent(
             icon = {
                 Icon(
                     Icons.Filled.Bookmark,
-                    contentDescription = "Collect"
+                    contentDescription = "收藏"
                 )
             },
             selected = currentRoute == "collect",
@@ -229,7 +240,7 @@ fun NavigationRailComponent(
             icon = {
                 Icon(
                     painterResource(R.drawable.person_icon),
-                    contentDescription = "User"
+                    contentDescription = "我的"
                 )
             },
             selected = currentRoute == "user",

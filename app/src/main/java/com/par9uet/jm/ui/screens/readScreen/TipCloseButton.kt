@@ -1,5 +1,6 @@
 package com.par9uet.jm.ui.screens.readScreen
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
@@ -22,13 +23,16 @@ fun TipCloseButton(
 ) {
     OutlinedButton(
         modifier = modifier,
-        onClick = onClick
+        onClick = onClick,
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.72f)),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                Icons.Default.Check, contentDescription = "", tint = Color.White
+                Icons.Default.Check,
+                contentDescription = null,
+                tint = Color.White,
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(text = "知道了", color = Color.White, fontSize = 16.sp)
