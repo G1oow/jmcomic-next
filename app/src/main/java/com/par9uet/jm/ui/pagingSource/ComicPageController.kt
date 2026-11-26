@@ -67,9 +67,10 @@ abstract class ComicRemotePagingSource : PagingSource<Int, Comic>() {
         total: Int?,
     ): LoadResult.Page<Int, Comic> {
         val offset = (page.toLong() - 1) * remotePageSize
-        remoteTotalCount = total?.takeIf { it >= 0 && it.toLong() >= offset + remoteCount }
+        val validTotal = total?.takeIf { it >= 0 && it.toLong() >= offset + remoteCount }
+        remoteTotalCount = validTotal
         val hasMore = remoteCount >= remotePageSize &&
-            (remoteTotalCount == null || offset + remoteCount < remoteTotalCount!!)
+            (validTotal == null || offset + remoteCount < validTotal)
         return LoadResult.Page(
             data = data,
             prevKey = if (page == 1) null else page - 1,
@@ -187,10 +188,11 @@ internal class ComicPageSession(
             reachedEnd = remotePage == null
             if (reachedEnd) break
             // A warm-up only needs the next page's items, not another page's lookahead.
+            val totalKnown = knownTotal
             val required = if (budget != null) COMIC_DISPLAY_PAGE_SIZE else when {
-                source.hasLocalFilters || knownTotal == null ->
+                source.hasLocalFilters || totalKnown == null ->
                     if (page == 1) COMIC_PAGINATION_THRESHOLD else COMIC_DISPLAY_PAGE_SIZE + 1
-                knownTotal!! < COMIC_PAGINATION_THRESHOLD && page == 1 -> knownTotal!!
+                totalKnown < COMIC_PAGINATION_THRESHOLD && page == 1 -> totalKnown
                 else -> COMIC_DISPLAY_PAGE_SIZE
             }
             if (candidates.size >= required) break

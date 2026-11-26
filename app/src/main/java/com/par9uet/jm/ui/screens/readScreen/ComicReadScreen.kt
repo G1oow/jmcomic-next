@@ -2,6 +2,8 @@ package com.par9uet.jm.ui.screens.readScreen
 
 import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -9,6 +11,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -79,6 +83,9 @@ import com.par9uet.jm.store.ToastManager
 import com.par9uet.jm.store.UserManager
 import com.par9uet.jm.ui.screens.LocalMainNavController
 import com.par9uet.jm.ui.components.adaptiveDialogMaxHeight
+import com.par9uet.jm.ui.theme.LocalAppMotion
+import com.par9uet.jm.ui.theme.motionEasing
+import com.par9uet.jm.ui.theme.motionExitEasing
 import com.par9uet.jm.ui.viewModel.ComicReadViewModel
 import com.par9uet.jm.utils.VolumeKeyPageTurnDispatcher
 import org.koin.androidx.compose.koinViewModel
@@ -98,8 +105,9 @@ fun ComicReadScreen(
 ) {
     val context = LocalContext.current
     val mainNavController = LocalMainNavController.current
-    val isShowToolbar by comicReadViewModel.isShowToolBar
+    val motion = LocalAppMotion.current
     val size = comicReadViewModel.size
+    val isShowToolbar by comicReadViewModel.isShowToolBar
     var currentIndexState by comicReadViewModel.currentIndexState
     val localSetting by localSettingManager.localSettingState.collectAsState()
     var brightnessOverride by rememberSaveable { mutableIntStateOf(0) }
@@ -340,7 +348,7 @@ fun ComicReadScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         if (loading) {
             CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
         } else if (size <= 0) {
@@ -380,14 +388,22 @@ fun ComicReadScreen(
                     .align(Alignment.CenterStart)
                     .padding(start = 10.dp),
                 visible = isShowToolbar,
-                enter = slideInHorizontally(
-                    initialOffsetX = { fullWidth -> -fullWidth },
-                    animationSpec = tween(durationMillis = 250)
-                ) + fadeIn(),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { fullWidth -> -fullWidth },
-                    animationSpec = tween(durationMillis = 250)
-                ) + fadeOut()
+                enter = if (motion.enabled) {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(durationMillis = motion.enterMs, easing = motionEasing)
+                    ) + fadeIn(tween(durationMillis = motion.enterMs, easing = motionEasing))
+                } else {
+                    EnterTransition.None
+                },
+                exit = if (motion.enabled) {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(durationMillis = motion.exitMs, easing = motionExitEasing)
+                    ) + fadeOut(tween(durationMillis = motion.exitMs, easing = motionExitEasing))
+                } else {
+                    ExitTransition.None
+                }
             ) {
                 ReadSideBar(
                     comic = comic,
@@ -440,14 +456,22 @@ fun ComicReadScreen(
             AnimatedVisibility(
                 modifier = Modifier.align(Alignment.BottomCenter),
                 visible = isShowToolbar,
-                enter = slideInVertically(
-                    initialOffsetY = { fullHeight -> fullHeight },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeIn(),
-                exit = slideOutVertically(
-                    targetOffsetY = { fullHeight -> fullHeight },
-                    animationSpec = tween(durationMillis = 300)
-                ) + fadeOut()
+                enter = if (motion.enabled) {
+                    slideInVertically(
+                        initialOffsetY = { fullHeight -> fullHeight },
+                        animationSpec = tween(durationMillis = motion.enterMs, easing = motionEasing)
+                    ) + fadeIn(tween(durationMillis = motion.enterMs, easing = motionEasing))
+                } else {
+                    EnterTransition.None
+                },
+                exit = if (motion.enabled) {
+                    slideOutVertically(
+                        targetOffsetY = { fullHeight -> fullHeight },
+                        animationSpec = tween(durationMillis = motion.exitMs, easing = motionExitEasing)
+                    ) + fadeOut(tween(durationMillis = motion.exitMs, easing = motionExitEasing))
+                } else {
+                    ExitTransition.None
+                }
             ) {
                 ToolsBar(
                     currentIndex = currentIndexState,
@@ -468,16 +492,25 @@ fun ComicReadScreen(
             AnimatedVisibility(
                 modifier = Modifier
                     .align(Alignment.TopStart)
+                    .statusBarsPadding()
                     .padding(start = 12.dp, top = 12.dp),
                 visible = isShowToolbar,
-                enter = slideInHorizontally(
-                    initialOffsetX = { fullWidth -> -fullWidth },
-                    animationSpec = tween(durationMillis = 250)
-                ) + fadeIn(),
-                exit = slideOutHorizontally(
-                    targetOffsetX = { fullWidth -> -fullWidth },
-                    animationSpec = tween(durationMillis = 250)
-                ) + fadeOut()
+                enter = if (motion.enabled) {
+                    slideInHorizontally(
+                        initialOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(durationMillis = motion.enterMs, easing = motionEasing)
+                    ) + fadeIn(tween(durationMillis = motion.enterMs, easing = motionEasing))
+                } else {
+                    EnterTransition.None
+                },
+                exit = if (motion.enabled) {
+                    slideOutHorizontally(
+                        targetOffsetX = { fullWidth -> -fullWidth },
+                        animationSpec = tween(durationMillis = motion.exitMs, easing = motionExitEasing)
+                    ) + fadeOut(tween(durationMillis = motion.exitMs, easing = motionExitEasing))
+                } else {
+                    ExitTransition.None
+                }
             ) {
                 ReaderExitButton(
                     onClick = { mainNavController.popBackStack() }

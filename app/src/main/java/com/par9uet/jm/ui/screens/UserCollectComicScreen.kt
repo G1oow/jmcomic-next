@@ -28,6 +28,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -104,11 +107,19 @@ import com.par9uet.jm.ui.components.Comic
 import com.par9uet.jm.ui.components.ComicPaginationBar
 import com.par9uet.jm.ui.components.ComicPagePreloadEffect
 import com.par9uet.jm.ui.components.ComicSkeleton
+import com.par9uet.jm.ui.components.CommonScaffold
 import com.par9uet.jm.ui.components.PullRefreshAndLoadMoreGrid
 import com.par9uet.jm.ui.components.rememberComicPageGridState
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
 import com.par9uet.jm.ui.components.adaptiveDialogMaxHeight
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleBottomMargin
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleHeight
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsulePagerBlock
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabFloatingChrome
 import com.par9uet.jm.ui.screens.tabScreen.TabHeader
+import com.par9uet.jm.ui.theme.LocalAppMotion
+import com.par9uet.jm.ui.theme.motionEasing
+import com.par9uet.jm.ui.theme.motionExitEasing
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
@@ -252,9 +263,34 @@ fun UserCollectComicScreen(
     }
 
     // tab 模式下收藏页顶部固定着搜索/筛选栏，状态栏空间由外层预留，
-    // 列表头部只画标题，不再重复顶开一个状态栏高度。
+    // 列表头部只画固定标题，不读取全局路由，避免切页退场时标题消失导致跳动。
     val listHeader: (@Composable () -> Unit)? = if (useScaffold) null else {
-        { TabHeader(inset = 0.dp) }
+        { TabHeader(inset = 0.dp, title = "我的收藏") }
+    }
+
+    val motion = LocalAppMotion.current
+    val floatingChrome = LocalTabFloatingChrome.current
+    val bottomClearance = if (floatingChrome != null) {
+        floatingChrome.navigationBarInset + ChromeCapsuleHeight + ChromeCapsuleBottomMargin * 2 +
+            if (pageState.enabled) ChromeCapsulePagerBlock else 0.dp
+    } else {
+        0.dp
+    }
+    val toolbarEnter = if (motion.enabled) {
+        expandVertically(
+            expandFrom = Alignment.Top,
+            animationSpec = tween(durationMillis = motion.enterMs, easing = motionEasing),
+        ) + fadeIn(tween(durationMillis = motion.enterMs, easing = motionEasing))
+    } else {
+        EnterTransition.None
+    }
+    val toolbarExit = if (motion.enabled) {
+        shrinkVertically(
+            shrinkTowards = Alignment.Top,
+            animationSpec = tween(durationMillis = motion.exitMs, easing = motionExitEasing),
+        ) + fadeOut(tween(durationMillis = motion.exitMs, easing = motionExitEasing))
+    } else {
+        ExitTransition.None
     }
 
     // 主体内容：搜索栏 + 收藏夹 Chip + 排序 + 漫画网格
@@ -268,8 +304,8 @@ fun UserCollectComicScreen(
             Column(modifier = Modifier.fillMaxSize()) {
                     AnimatedVisibility(
                         visible = toolbarVisible,
-                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                        enter = toolbarEnter,
+                        exit = toolbarExit,
                     ) {
                         Surface(
                             color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -398,8 +434,8 @@ fun UserCollectComicScreen(
                     // 排序：Material 3 单选 SegmentedButton
                     AnimatedVisibility(
                         visible = toolbarVisible,
-                        enter = expandVertically(expandFrom = Alignment.Top) + fadeIn(),
-                        exit = shrinkVertically(shrinkTowards = Alignment.Top) + fadeOut(),
+                        enter = toolbarEnter,
+                        exit = toolbarExit,
                     ) {
                         Column {
                             Row(
@@ -457,7 +493,7 @@ fun UserCollectComicScreen(
                         columns = adaptiveComicGridCells(localSetting.collectGridColumns),
                         verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.Top),
                         horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        contentPadding = PaddingValues(14.dp),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 14.dp + bottomClearance),
                         header = listHeader,
                         enablePullRefresh = false,
                         pageState = pageState,
@@ -501,35 +537,12 @@ fun UserCollectComicScreen(
     }
 
     if (useScaffold) {
-        Scaffold(
-            topBar = {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "我的收藏",
-                            fontWeight = FontWeight.Bold
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回"
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer
-                    )
-                )
-            },
-            bottomBar = { editBar() }
-        ) { innerPadding ->
-            Box(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-            ) {
+        CommonScaffold(
+            title = "我的收藏",
+            onNavigateBack = { navController.popBackStack() },
+            bottomBar = { editBar() },
+        ) {
+            Box(modifier = Modifier.fillMaxSize()) {
                 mainContent()
             }
         }

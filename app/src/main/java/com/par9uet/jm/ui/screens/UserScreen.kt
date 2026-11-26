@@ -57,6 +57,9 @@ import coil.compose.AsyncImage
 import com.par9uet.jm.data.models.User
 import com.par9uet.jm.store.RemoteSettingManager
 import com.par9uet.jm.store.UserManager
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleBottomMargin
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleHeight
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabFloatingChrome
 import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
 import com.par9uet.jm.ui.viewModel.UserViewModel
 import kotlinx.coroutines.launch
@@ -309,7 +312,7 @@ private fun MenuGroup(
         )
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
         ) {
@@ -353,11 +356,17 @@ fun UserScreen(
         },
         modifier = Modifier.fillMaxSize()
     ) {
+        val floatingChrome = LocalTabFloatingChrome.current
+        val bottomClearance = if (floatingChrome != null) {
+            floatingChrome.navigationBarInset + ChromeCapsuleHeight + ChromeCapsuleBottomMargin * 2
+        } else {
+            0.dp
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomClearance),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             LocalTabHeader.current?.invoke()

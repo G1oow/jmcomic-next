@@ -126,8 +126,8 @@ private fun applyPaletteOverride(
     isDark: Boolean,
     customOverride: (Int) -> String?,
 ): ColorScheme {
-    val presetColors = (if (isDark) PRESET_COLORS_DARK else PRESET_COLORS_LIGHT)[presetId]
-        ?: (if (isDark) PRESET_COLORS_DARK else PRESET_COLORS_LIGHT)[COLOR_PALETTE_PRESET_DEFAULT]!!
+    val presetMap = if (isDark) PRESET_COLORS_DARK else PRESET_COLORS_LIGHT
+    val presetColors = presetMap[presetId] ?: requireNotNull(presetMap[COLOR_PALETTE_PRESET_DEFAULT])
     val primary = customOverride(0)?.toColorOrNull() ?: Color(presetColors[0])
     val secondary = customOverride(1)?.toColorOrNull() ?: Color(presetColors[1])
     val tertiary = customOverride(2)?.toColorOrNull() ?: Color(presetColors[2])

@@ -61,6 +61,7 @@ import com.par9uet.jm.data.models.APP_LOCK_TYPE_PASSWORD
 import com.par9uet.jm.data.models.APP_LOCK_TYPE_PATTERN
 import com.par9uet.jm.data.models.APP_LOCK_METHOD_BIOMETRIC
 import com.par9uet.jm.data.models.APP_LOCK_RULE_REQUIRED
+import com.par9uet.jm.ui.theme.LocalAppMotion
 import com.par9uet.jm.utils.authenticateWithBiometrics
 import com.par9uet.jm.utils.canUseBiometricAuth
 import com.par9uet.jm.utils.findFragmentActivity
@@ -193,8 +194,9 @@ fun AppLockScreen(
                 if (APP_LOCK_METHOD_BIOMETRIC in methodsToPass && APP_LOCK_METHOD_BIOMETRIC !in completedMethods) {
                     FilledTonalButton(
                         onClick = {
+                            val hostActivity = activity ?: return@FilledTonalButton
                             authenticateWithBiometrics(
-                                activity = activity!!,
+                                activity = hostActivity,
                                 title = "解锁 JM",
                                 subtitle = "由系统验证已录入的${when {
                                     fingerprintEnabled && faceEnabled -> "指纹或面容"
@@ -283,11 +285,13 @@ fun PasswordLockInput(
 ) {
     val len = passwordLength.coerceIn(4, 8)
     val scope = rememberCoroutineScope()
+    val motion = LocalAppMotion.current
     val digits = remember { mutableStateListOf<Int>() }
     var isError by remember { mutableStateOf(false) }
     val shakeOffset = remember { Animatable(0f) }
 
     fun triggerShake() {
+        if (!motion.enabled) return
         scope.launch {
             shakeOffset.animateTo(0f)
             val values = listOf(-10f, 10f, -8f, 8f, -5f, 5f, 0f)
@@ -470,9 +474,11 @@ fun PatternLockInput(
     val gridSizePx = with(density) { 280.dp.toPx() }
     val gridSize = androidx.compose.ui.geometry.Size(gridSizePx, gridSizePx)
     val scope = rememberCoroutineScope()
+    val motion = LocalAppMotion.current
     val shakeOffset = remember { Animatable(0f) }
 
     fun triggerShake() {
+        if (!motion.enabled) return
         scope.launch {
             shakeOffset.animateTo(0f)
             val values = listOf(-10f, 10f, -8f, 8f, -5f, 5f, 0f)
@@ -547,11 +553,17 @@ fun PatternLockInput(
                 },
             contentAlignment = Alignment.Center
         ) {
+            val primaryColor = MaterialTheme.colorScheme.primary
+            val errorColor = MaterialTheme.colorScheme.error
+            val emptyDotColor = MaterialTheme.colorScheme.outlineVariant
             Canvas(modifier = Modifier.fillMaxSize()) {
                 drawPattern(
                     selectedDots = selectedDots.toList(),
                     currentTouch = currentTouch,
-                    isError = isError
+                    isError = isError,
+                    accentColor = primaryColor,
+                    errorColor = errorColor,
+                    emptyDotColor = emptyDotColor,
                 )
             }
         }
@@ -575,13 +587,15 @@ private fun computeDotCenters(size: androidx.compose.ui.geometry.Size): List<Off
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPattern(
     selectedDots: List<Int>,
     currentTouch: Offset?,
-    isError: Boolean
+    isError: Boolean,
+    accentColor: Color,
+    errorColor: Color,
+    emptyDotColor: Color,
 ) {
     val centers = computeDotCenters(size)
-    val accent = Color(0xFF6750A4)
-    val lineColor = if (isError) Color.Red else accent
-    val dotFillColor = if (isError) Color.Red else accent
-    val dotEmptyColor = Color(0xFF9E9E9E)
+    val lineColor = if (isError) errorColor else accentColor
+    val dotFillColor = if (isError) errorColor else accentColor
+    val dotEmptyColor = emptyDotColor
 
     // 连接线
     if (selectedDots.isNotEmpty()) {

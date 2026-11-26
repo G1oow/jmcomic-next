@@ -143,7 +143,7 @@ fun LoginScreen(
                     // Logo
                     Image(
                         painter = painterResource(id = R.drawable.logo_with_name),
-                        contentDescription = "App Logo",
+                        contentDescription = "应用图标",
                         modifier = Modifier
                             .fillMaxWidth()
                             .aspectRatio(837f / 263f),
