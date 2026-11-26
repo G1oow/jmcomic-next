@@ -1,557 +1,400 @@
-# JMcomic Next
+<p align="center">
+  <img src="app/src/main/res/mipmap-hdpi/logo_round.webp" width="128" alt="JMcomic Next logo">
+</p>
 
-<img src=".\app\src\main\res\mipmap-hdpi\logo_round.webp" alt="logo" style="zoom:200%;" />
+<h1 align="center">JMcomic Next</h1>
 
-#### ⚠️⚠️本项目含有NSFW内容，请酌情观看⚠️⚠️
+<p align="center">用 Jetpack Compose 重写的 JM 漫画客户端 · 手机端 + Wear OS 手表端</p>
 
-JMcomic Next 是一个基于 Kotlin、Jetpack Compose 与 Material 3 构建的 Android 漫画客户端。项目由 `Dedicatus546/jm-mobile` 二次开源整理而来，当前仓库在原项目基础上继续维护移动端界面、阅读体验、本地缓存、下载管理、PDF 导出与 AI 对话等功能。
+<p align="center">
+  <img src="https://img.shields.io/badge/Android-6.0%2B-3DDC84?logo=android&logoColor=white" alt="Android 6.0+">
+  <img src="https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?logo=kotlin&logoColor=white" alt="Kotlin 2.4.21">
+  <img src="https://img.shields.io/badge/Compose-Material%203-4285F4?logo=jetpackcompose&logoColor=white" alt="Jetpack Compose">
+  <img src="https://img.shields.io/badge/license-GPL--3.0-green" alt="GPL-3.0">
+</p>
 
-本项目基于[Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile)魔改而来，使用[JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java)作为默认API
+> [!WARNING]
+> 本项目包含 NSFW 内容。请根据自身情况与当地法律法规谨慎使用。
 
-感谢[LINUX DO论坛](https://linux.do)以及对本项目提供大力支持的[RawChat团队](https://linux.do/u/RawChat)，没有各位的支持，这个项目不可能出现，由衷感谢各位！
+JMcomic Next 是一个 Android 漫画客户端，界面使用 Kotlin、Jetpack Compose 与 Material 3 实现。项目在 [Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile) 的基础上继续维护，默认使用 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java) 作为内置数据源，同时保留可切换的网络 API 入口。
 
-Linux.do提供建议的佬友们：[dijunwanshou](https://linux.do/u/dijunwanshou/summary)、[zeroLin](https://linux.do/u/zerolin/summary)、[dunxuan](https://linux.do/u/dunxuan/summary)、[lyston](https://linux.do/u/lyston/summary)、[catnap](https://linux.do/u/catnap/summary)、[JasonGui](https://linux.do/u/jasongui/summary)、[sswh317](https://linux.do/u/sswh317/summary)、[Jealousy](https://linux.do/u/jealousy/summary)、[lxy521031](https://linux.do/u/lxy521031/summary)、[Timothy](https://linux.do/u/timothy/summary)、[sylarQAQ](https://linux.do/u/sylarqaq/summary)、[cftyhn](https://linux.do/u/cftyhn/summary)、[chowhound](https://linux.do/u/chowhound/summary)
-
-Github提交issue的各位：[yinshu2002](https://github.com/yinshu2002)、[lyston11 (lyston)](https://github.com/lyston11)、[Nines70 (Lpublic)](https://github.com/Nines70)、[lin39c5bb](https://github.com/lin39c5bb)、[ZhangXusen (小国际)](https://github.com/ZhangXusen)、[Luo923 (Tao Luo)](https://github.com/Luo923)、[snakeJohn (Sneoans)](https://github.com/snakeJohn)、[franklleee](https://github.com/franklleee)、[788gdd (788)](https://github.com/788gdd)、[ban-code-art (YuhaoLuo)](https://github.com/ban-code-art)、[EntID-Ke (EntID/Ke)](https://github.com/EntID-Ke)、[yevonou (sunwear)](https://github.com/yevonou)、[j1v-software (j1v)](https://github.com/j1v-software)、[Hanestl](https://github.com/Hanestl)、[LanHuXiangYuan](https://github.com/LanHuXiangYuan)、[yxxbc (Black Cat)](https://github.com/yxxbc)、[Yanzietta](https://github.com/Yanzietta)、[funnytime75 (funnytime)](https://github.com/funnytime75)、[xiban123](https://github.com/xiban123)、[plane714 (张三)](https://github.com/plane714)、[swhje](https://github.com/swhje)
-
-由衷感谢[Jea1ousy (DB)](https://github.com/Jea1ousy)、[linze0721 (萧瑟)](https://github.com/linze0721)、[hifumi_mizuhara](https://linux.do/u/hifumi_mizuhara)、[serious198706 (cy198706)](https://github.com/serious198706)、[funnytime75 (funnytime)](https://github.com/funnytime75)为本项目添砖加瓦！
-
-**以及我亲爱的QQ群友们！你们的需求是我前进的动力！回家的路永远都在！**
-
-项目的主要目标是把传统 Android 漫画客户端改造成更贴近现代 Android 设计习惯的 Compose 应用：页面使用 Material You 风格，入口和阅读流程尽量简洁，网络请求、登录状态、本地设置与缓存数据通过较清晰的 Repository、Manager、Storage、ViewModel 分层组织。
+- 手机端 `:app`（Android 6.0+）与手表端 `:jm-mobile-clock`（Wear OS，Android 7.1+）是两个独立的可安装应用。
+- 网络、缓存、下载、AI 对话一律按 `Service / DAO / Storage → Repository → ViewModel → StateFlow → Composable` 分层，不在 UI 层直接请求数据。
 
 ## 截图
 
-| 首页                            | 详情（日间）                                            |
-| ------------------------------- | ------------------------------------------------------- |
-| ![首页](readme-assets/首页.jpg) | ![详情（日间模式）](readme-assets/详情（日间模式）.jpg) |
+<p align="center">
+  <img src="readme-assets/首页.jpg" width="24%" alt="首页">
+  <img src="readme-assets/详情（日间模式）.jpg" width="24%" alt="详情（日间模式）">
+  <img src="readme-assets/详情（夜间模式）.jpg" width="24%" alt="详情（夜间模式）">
+  <img src="readme-assets/搜索1.jpg" width="24%" alt="搜索">
+</p>
 
-| 详情（夜间）                                            | 搜索                             |
-| ------------------------------------------------------- | -------------------------------- |
-| ![详情（夜间模式）](readme-assets/详情（夜间模式）.jpg) | ![搜索](readme-assets/搜索1.jpg) |
+<p align="center">
+  <img src="readme-assets/搜索2.jpg" width="24%" alt="搜索结果">
+  <img src="readme-assets/每周必看.jpg" width="24%" alt="每周必看">
+  <img src="readme-assets/签到.jpg" width="24%" alt="签到">
+  <img src="readme-assets/个人中心.jpg" width="24%" alt="个人中心">
+</p>
 
-| 搜索结果                             | 每周必看                                |
-| ------------------------------------ | --------------------------------------- |
-| ![搜索结果](readme-assets/搜索2.jpg) | ![每周必看](readme-assets/每周必看.jpg) |
+## 功能
 
-| 签到                            | 个人中心                                |
-| ------------------------------- | --------------------------------------- |
-| ![签到](readme-assets/签到.jpg) | ![个人中心](readme-assets/个人中心.jpg) |
+### 浏览与发现
 
-## 功能概览
+- 首页轮播推荐、分类入口与自定义分类排序；网格列数可固定或自适应。
+- 推荐来源可选内置推荐、网络推荐或基于账号偏好的个性化推荐。
+- 搜索支持关键词、`-tag` 排除语法、主分类筛选、排序方式与搜索历史。
+- 从任意标签或分类进入日榜 / 周榜 / 月榜。
+- 详情页展示封面、作者、标签、章节、评论与相关推荐，支持收藏、点赞与评论回复。
+- 每周必看、收藏列表、阅读历史、评论历史。
 
-- 首页推荐：展示轮播推荐内容，并提供常用页面入口。
-- 漫画搜索：支持关键词搜索、搜索结果列表、历史搜索记录与排序筛选。
-- 漫画详情：展示封面、标题、作者、标签、章节、评论、相关推荐与收藏状态。
-- 漫画阅读：支持滚动阅读和分页阅读，阅读页会按当前页前后范围预解码图片。
-- 图片解码：针对部分图片切片/扰乱规则，客户端会根据漫画 ID、页码和服务端参数还原图片。
-- 用户系统：支持登录、自动登录、签到、收藏列表、阅读历史与评论历史。
-- 评论功能：支持查看漫画评论、发表评论和回复评论。
-- 每周推荐：支持按分类和类型查看每周必看内容。
-- 本地下载：使用 WorkManager 创建后台下载任务，下载封面和图片后写入本地缓存。
-- 下载管理：使用 Room 保存下载任务、进度、状态、封面路径和压缩包路径。
-- 本地阅读：已下载漫画可从本地缓存或 zip 包中读取图片。
-- PDF 导出：已缓存漫画可通过系统目录授权导出为 PDF。
-- AI 对话：提供本地会话管理和流式响应展示，支持可选的思考块展示逻辑。
-- 应用内更新：启动时自动检查本仓库 GitHub Release，检测到新版本可直接在应用内下载并安装。
-- 本地设置：支持 API 域名、图片分流、主题模式、阅读模式和预加载数量等配置。
-- 深色模式：通过 Material 3 主题适配浅色、深色和跟随系统模式。
+### 阅读
+
+- 滚动、分页、点击三种阅读模式，点击区支持 `default` 与 `side` 两种布局。
+- 自动翻页（200 毫秒到 60 秒可调，按钮外圈显示剩余进度）、音量键翻页、亮度调节。
+- 记住上次阅读的章节与页码，章节选择器标记已读章节。
+- 按前后范围预解码图片，支持并发解码上限与内存优化开关。
+- 长按图片保存到相册，默认关闭，开启后仍需在弹窗中二次确认。
+- 图片以原始尺寸解码后再做切片还原，规避缩放导致的错位与白线。
+
+### 下载与缓存
+
+- WorkManager 后台下载，Room 记录进度、状态与分组信息，通知栏显示进度并支持重试。
+- 下载目录可留在应用私有目录，也可通过系统目录授权（SAF）放到外部存储，支持后台迁移与持续进度通知。
+- 离线阅读支持图片目录与 zip 包两种来源。
+- 缓存完整性检查（关闭 / 配置与封面 / 全量），缓存清理页可按类别清理封面、漫画、解码与导出临时文件。
+- 已缓存漫画可导出为 PDF。
+
+### 隐私与安全
+
+- 应用锁：密码、图案、生物识别，解锁规则可选“任一通过”或“全部通过”。
+- 胁迫凭据：输入预设的密码或图案后进入电子木鱼伪装页，不会解锁主应用。
+- 桌面图标伪装：可在 JMcomic、系统工具、相册、木鱼之间切换。
+- 启用 `FLAG_SECURE` 阻止截图与任务预览，切到后台时再盖一层纯色遮挡。
+- 本地敏感数据经 `SecureStorage` 统一加密，优先使用 Android Keystore 的 AES/GCM 密钥。
+- 备份与恢复：可导出带访问保护的备份，覆盖设置、下载路径、AI 会话、人设与缓存索引。
+
+### AI 助手
+
+- 流式对话与 Markdown 渲染，思考块可折叠。
+- 可在两个上游模型间切换，支持多个联网搜索引擎与自定义人设（Persona）管理。
+- 会话保存在本地，可纳入备份。
+
+### 其他
+
+- 主题跟随系统 / 浅色 / 深色，内置配色预设与自定义四色。
+- DNS over HTTPS：内置与自定义服务器、延迟测速、启动时自动启用。
+- 应用内检查更新，直接下载并调起系统安装器。
+- 剪贴板识别与「提取编码」页：从分享文案里提取数字并直接拉取漫画详情。
+- 运行日志查看器，方便反馈问题。
+- Wear OS 手表端：圆形 / 方形表盘适配、阅读控制、重力翻页、离线缓存、应用锁与悬浮球。
 
 ## 技术栈
 
-| 类型       | 使用内容                                             |
-| ---------- | ---------------------------------------------------- |
-| 语言       | Kotlin                                               |
-| UI         | Jetpack Compose、Material 3、Material Icons Extended |
-| 导航       | AndroidX Navigation Compose                          |
-| 架构与状态 | ViewModel、StateFlow、Compose State                  |
-| 依赖注入   | Koin                                                 |
-| 网络       | Retrofit、OkHttp、Gson                               |
-| 图片加载   | Coil                                                 |
-| 本地数据库 | Room、Room Paging                                    |
-| 分页       | Paging 3                                             |
-| 后台任务   | WorkManager                                          |
-| 日历组件   | Kizitonwose Calendar Compose                         |
-| 构建       | Gradle Kotlin DSL、KSP、Android Gradle Plugin        |
-
-## 环境要求
-
-- Android Studio Narwhal 或更新版本。
-- JDK 17 或更高版本。项目源码编译目标为 JVM 17。
-- Android SDK：
-  - `compileSdk 36`
-  - `targetSdk 35`
-  - `minSdk 23`
-- Gradle Wrapper 已包含在仓库中，建议直接使用项目内的 `gradlew`。
-
-项目当前使用阿里云 Maven 镜像源，配置位于 `settings.gradle.kts`。如果你处在其他网络环境，也可以把仓库源改回 `google()`、`mavenCentral()` 和 `gradlePluginPortal()`。
-
-## 快速开始
-
-克隆仓库：
-
-```bash
-git clone https://github.com/HongShi2333/jmcomic-next.git
-cd jmcomic-next
-```
-
-使用 Android Studio 打开项目根目录，等待 Gradle 同步完成后运行 `app` 模块。
-
-命令行检查 Kotlin 编译：
-
-```bash
-./gradlew :app:compileDebugKotlin --console=plain
-```
-
-Windows 环境：
-
-```bat
-gradlew.bat :app:compileDebugKotlin --console=plain
-```
-
-构建 Debug APK：
-
-```bash
-./gradlew :app:assembleDebug --console=plain
-```
-
-构建 Release APK：
-
-```bash
-./gradlew :app:assembleRelease --console=plain
-```
-
-首次打开项目时，Android Studio 会自动生成 `local.properties`。该文件包含本机 Android SDK 路径，不应提交到仓库。
-
-## 应用信息
-
-| 项                 | 当前值               |
-| ------------------ | -------------------- |
-| 应用名             | JMcomic              |
-| Gradle rootProject | `jm-mobile-android6` |
-| Android 模块       | `app`                |
-| namespace          | `com.par9uet.jm`     |
-| applicationId      | `jmcomicoi.net`      |
-| minSdk             | `23`                 |
-| targetSdk          | `35`                 |
-| compileSdk         | `36`                 |
-| 当前 versionName   | `1.1.2`              |
-| License            | GPL-3.0              |
-
-`applicationId` 是安装到设备后的包名，`namespace` 是源码和资源生成使用的命名空间。当前 Kotlin 源码和资源引用依赖 `com.par9uet.jm`，不建议随意修改 `namespace`。
+| 类型 | 使用内容 |
+| --- | --- |
+| 语言 | Kotlin 2.4.21，JVM 17 |
+| UI | Jetpack Compose、Material 3、Material Icons Extended |
+| 导航 | AndroidX Navigation Compose |
+| 架构与状态 | ViewModel、StateFlow、Compose State |
+| 依赖注入 | Koin 4.2 |
+| 网络 | Retrofit 3、OkHttp 4、Gson、jsoup |
+| 内置数据源 | JMComic-Api-Java v1.1.12 |
+| 图片加载 | Coil 2.7 |
+| 本地数据库 | Room 2.8、Room Paging |
+| 分页 | Paging 3 |
+| 后台任务 | WorkManager |
+| 日历组件 | Kizitonwose Calendar Compose |
+| 构建 | Gradle 9.5.1、AGP 9.1.0、KSP、Gradle Kotlin DSL |
 
 ## 项目结构
 
 ```text
 .
-├── app/                              Android 应用模块
-│   ├── build.gradle.kts              app 模块构建配置
-│   ├── proguard-rules.pro            Release 混淆配置
+├── app/                         手机端 Android 应用模块（:app）
+│   ├── build.gradle.kts         应用构建配置、版本读取、发布签名
+│   ├── proguard-rules.pro       Release 混淆规则
 │   └── src/main/
-│       ├── AndroidManifest.xml       应用清单、权限、入口 Activity
-│       ├── java/com/par9uet/jm/      Kotlin 源码
-│       └── res/                      图标、主题、字符串等资源
-├── gradle/
-│   ├── libs.versions.toml            依赖与插件版本管理
-│   └── wrapper/                      Gradle Wrapper
-├── readme-assets/                    README 截图资源
-├── CHANGELOG                         变更记录
-├── LICENSE                           GPL-3.0 许可证
-├── README.md                         项目说明
-├── settings.gradle.kts               仓库源和模块声明
-└── version.properties                应用版本号配置
+│       ├── AndroidManifest.xml  权限、入口 Activity、桌面图标别名
+│       ├── java/com/par9uet/jm/ Kotlin 源码
+│       └── res/                 图标、主题、字符串等资源
+├── jm-mobile-clock/             手表端 Wear OS 模块（:jm-mobile-clock）
+├── gradle/libs.versions.toml    依赖与插件版本目录
+├── readme-assets/               README 截图
+├── docs/                        调试与验证记录
+├── tools/                       一次性验证脚本
+├── CHANGELOG                    变更记录
+├── LICENSE                      GPL-3.0
+├── version.properties           唯一的版本号来源
+└── settings.gradle.kts          仓库源与模块声明
 ```
+
+| 模块 | applicationId | minSdk | 说明 |
+| --- | --- | --- | --- |
+| `:app` | `jmcomicoi.net` | 23 | 手机端 |
+| `:jm-mobile-clock` | `jmcomicoi.net.clock` | 25 | Wear OS 手表端 |
+
+两个模块的 `namespace` 都是 `com.par9uet.jm`。`applicationId` 与 `namespace` 一旦改动，已安装用户将无法覆盖升级，源码与资源引用也会大面积失效，不要修改。
 
 核心源码位于 `app/src/main/java/com/par9uet/jm`：
 
 ```text
 com.par9uet.jm
-├── cache/             缓存目录工具
-├── coil/              Coil ImageLoader 配置
-├── data/models/       业务数据模型
-├── database/          Room 数据库、DAO、下载任务实体
-├── di/                Koin 依赖注入模块
-├── repository/        数据仓库，封装网络和业务请求
-├── retrofit/          Retrofit、OkHttp、拦截器、响应转换和接口定义
-├── storage/           SharedPreferences、安全存储和本地状态持久化
-├── store/             全局状态管理器，如用户、设置、下载、Toast
-├── task/              应用启动初始化任务接口
-├── ui/                Compose 页面、组件、主题、ViewModel
-├── utils/             通用工具、PDF 导出、图片压缩、时间和日志
-├── worker/            WorkManager 后台任务
-├── App.kt             Compose 应用根节点
-├── JmApplication.kt   Application，启动 Koin 和 WorkManager 注入
-└── MainActivity.kt    Activity 入口，启用 edge-to-edge 并挂载 Compose
+├── cache/          缓存目录、封面缓存、下载缓存格式与迁移
+├── coil/           Coil ImageLoader 配置
+├── data/models/    业务数据模型（Gson / Room 会被反射读取）
+├── database/       Room 数据库、DAO、下载任务实体
+├── di/             Koin 模块：App / Coil / Comic / Database / Retrofit / User
+├── network/        DoH、封面地址解析、时间排行抓取
+├── repository/     接口与 impl/，网络与本地数据的唯一入口
+├── retrofit/       Service、拦截器、响应转换、响应模型
+├── storage/        SharedPreferences 封装与加解密
+├── store/          全局状态（用户、设置、下载、更新、备份、初始化）
+├── task/           AppInitTask 启动任务接口
+├── ui/             Compose 页面、组件、主题、ViewModel、分页源
+├── utils/          通用工具、PDF 导出、Markdown、日志、图片处理
+├── worker/         WorkManager 后台任务
+├── App.kt          Compose 应用根节点（开屏、锁屏、警告与更新弹窗）
+├── JmApplication.kt Application，启动 Koin 与 WorkManager 注入
+└── MainActivity.kt Activity 入口，启用 edge-to-edge 并挂载 Compose
 ```
 
-## 启动流程
+## 环境要求
 
-应用入口是 `MainActivity`。它会启用沉浸式边到边显示，并在 `setContent` 中挂载 `AppTheme` 和 `App`。
+- JDK 17 或更高版本（CI 使用 Temurin 21）。
+- Android SDK：`platforms;android-36` 与 `build-tools;36.0.0`。
+- 能识别 AGP 9.1 的 Android Studio，或直接使用命令行构建。
+- Gradle Wrapper 已包含在仓库中，请始终使用 `gradlew` / `gradlew.bat`。
 
-`JmApplication` 在应用启动时调用 `startKoin`，注册以下模块：
+> [!TIP]
+> 仓库默认走阿里云 Maven 镜像与腾讯的 Gradle 分发镜像；在海外网络下可换回 `google()`、`mavenCentral()` 与官方 `services.gradle.org`。CI 通过 init script 切回官方仓库，改动仓库源时两边都要考虑。
 
-- `appModule`：协程作用域、Storage、Manager、AI 仓库、全局 ViewModel。
-- `coilModule`：全局 `ImageLoader`。
-- `comicModule`：漫画仓库和漫画相关 ViewModel。
-- `retrofitModule`：Retrofit、OkHttp 拦截器和接口 Service。
-- `userModule`：用户仓库和用户 ViewModel。
-- `databaseModule`：Room 数据库、下载 DAO、下载 Manager、下载 Worker。
+## 快速开始
 
-`App` 首次组合时会调用 `GlobalViewModel.init()`。初始化任务来自所有实现 `AppInitTask` 的对象，按 `AppTaskInfo.sort` 排序执行：
-
-| 顺序 | 任务             | 作用                                         |
-| ---- | ---------------- | -------------------------------------------- |
-| 1    | Retrofit 配置    | 恢复 Cookie，准备网络层                      |
-| 2    | 远端应用设置     | 请求远端设置，例如图片域名                   |
-| 3    | 本地 APP 设置    | 读取本地主题、阅读模式、API 域名、分流等配置 |
-| 其他 | 用户、历史搜索等 | 恢复用户状态和本地状态                       |
-
-初始化完成后，`InitManager` 的 `deferred` 会被完成，网络请求可以通过 `InitInterceptor` 等机制等待初始化状态。
-
-## 页面导航
-
-主导航定义在 `ui/screens/AppScreen.kt`，使用 `NavHost` 管理页面。默认入口是 `tab/home`。
-
-| 路由                                | 页面                        | 说明                    |
-| ----------------------------------- | --------------------------- | ----------------------- |
-| `tab/{tabName}`                     | `TabScreen`                 | 底部 Tab 容器，默认首页 |
-| `login`                             | `LoginScreen`               | 登录页                  |
-| `comicDetail/{id}`                  | `ComicDetailScreen`         | 漫画详情                |
-| `comicRead/{id}`                    | `ComicReadScreen`           | 在线阅读                |
-| `localComicRead/{id}`               | `ComicReadScreen`           | 本地缓存阅读            |
-| `comicSearch`                       | `ComicSearchScreen`         | 搜索入口                |
-| `comicSearchResult/{searchContent}` | `ComicSearchResultScreen`   | 搜索结果                |
-| `comicRecommend`                    | `ComicWeekRecommendScreen`  | 每周推荐                |
-| `comment/{comicId}`                 | `ComicCommentScreen`        | 评论列表                |
-| `sign`                              | `SignInScreen`              | 签到页                  |
-| `download`                          | `DownloadScreen`            | 下载管理                |
-| `downloadComicDetail/{id}`          | `DownloadComicDetailScreen` | 已缓存漫画详情          |
-| `userCollectComic`                  | `UserCollectComicScreen`    | 用户收藏                |
-| `userHistoryComic`                  | `UserHistoryComicScreen`    | 阅读历史                |
-| `userHistoryComment`                | `UserHistoryCommentScreen`  | 评论历史                |
-| `appLocalSetting`                   | `LocalSettingScreen`        | 本地设置                |
-
-`TabScreen` 负责底部导航框架，其他详情页、阅读页、下载页等通过主导航进入。
-
-## 网络层
-
-网络层由 `retrofit/Retrofit.kt` 封装。项目使用一个占位 baseUrl 创建 Retrofit，真正的 API 地址通过 `BaseUrlInterceptor` 动态替换。
-
-主要组成：
-
-- `ComicService`：漫画详情、搜索、推荐、章节图片、评论、收藏和点赞。
-- `UserService`：登录、收藏列表、阅读历史、评论历史、签到信息和签到提交。
-- `RemoteSettingService`：远端设置。
-- `BaseUrlInterceptor`：根据本地设置切换 API 域名。
-- `TokenInterceptor`：附加接口所需的鉴权或签名参数。
-- `InitInterceptor`：处理初始化完成前的请求时序。
-- `ToastInterceptor`：把网络错误转成用户可见提示。
-- `ResponseConverterFactory`：解析接口响应，并在成功时对加密的 `data` 字段解密。
-- `PrimitiveToRequestBodyConverterFactory`：支持 Retrofit `@Part` 传递基础类型。
-
-漫画图片列表不是标准 JSON 接口。`ComicRepositoryImpl.getComicPicList()` 会请求 `chapter_view_template`，拿到 HTML 后由 `DataDecode.kt` 中的 `parseHtml()`、`parseRange()` 和 `parseSpeed()` 解析图片地址、扰乱阈值和速度参数。
-
-## 数据与状态
-
-项目整体采用“Service -> Repository -> ViewModel -> Compose UI”的数据流。
-
-```text
-Retrofit Service / Room DAO / Storage
-        ↓
-Repository
-        ↓
-ViewModel
-        ↓
-StateFlow / Compose State
-        ↓
-Composable Screen
+```bash
+git clone https://github.com/G1oow/jmcomic-next.git
+cd jmcomic-next
 ```
 
-常见 UI 状态封装在 `ui/models` 中，例如 `CommonUIState`、`ListUIState`、`PageAppendUIState`。分页列表使用 Paging 3，分页源位于 `ui/pagingSource`。
+用 Android Studio 打开仓库根目录，等待 Gradle 同步完成后运行 `app` 模块。首次同步会自动生成 `local.properties`，该文件记录本机 SDK 路径，不要提交。
 
-全局状态类主要放在 `store`：
+常用命令：
 
-| 类                     | 作用                                    |
-| ---------------------- | --------------------------------------- |
-| `UserManager`          | 管理用户登录态和用户信息                |
-| `RemoteSettingManager` | 管理远端配置                            |
-| `LocalSettingManager`  | 管理主题、API、分流、阅读模式等本地设置 |
-| `HistorySearchManager` | 管理搜索历史                            |
-| `DownloadManager`      | 创建下载任务                            |
-| `ToastManager`         | 通过 Flow 向全局 Snackbar 发送提示      |
-| `InitManager`          | 协调应用初始化完成状态                  |
+| 目的 | 命令 |
+| --- | --- |
+| 编译 Kotlin | `gradlew.bat :app:compileDebugKotlin` |
+| 单元测试 | `gradlew.bat :app:testDebugUnitTest` |
+| Lint | `gradlew.bat :app:lintDebug` |
+| Debug APK | `gradlew.bat :app:assembleDebug` |
+| Release APK | `gradlew.bat :app:assembleRelease` |
+| 手表端编译 | `gradlew.bat :jm-mobile-clock:compileDebugKotlin` |
 
-## 本地存储
-
-项目使用两类本地存储：
-
-- `SharedPreferences`：保存用户信息、Cookie、本地设置、搜索历史和 AI 会话。
-- `Room`：保存下载漫画任务和缓存信息。
-
-`SecureStorage` 对写入 SharedPreferences 的内容做统一序列化和加密处理。`CryptoManager` 优先使用 Android Keystore 的 AES/GCM 密钥；如果 Keystore 不可用，会退化为带 `plain:` 前缀的 Base64 明文编码，便于兼容异常设备。
-
-Room 数据库定义在 `database/AppDatabase.kt`，当前只包含 `DownloadComic` 一张表：
-
-| 字段         | 说明                                                       |
-| ------------ | ---------------------------------------------------------- |
-| `id`         | 漫画 ID，作为主键                                          |
-| `name`       | 漫画名称                                                   |
-| `authorList` | 作者列表                                                   |
-| `coverPath`  | 本地封面路径                                               |
-| `zipPath`    | 本地图片压缩包路径                                         |
-| `progress`   | 下载进度，范围通常是 `0f..1f`                              |
-| `status`     | 下载状态，如 `pending`、`downloading`、`complete`、`error` |
-| `createTime` | 创建时间戳                                                 |
-
-## 下载与缓存
-
-下载入口位于 `DownloadManager.downloadComic()`。它会先向 Room 插入一条状态为 `pending` 的下载记录，然后创建 `OneTimeWorkRequest` 交给 WorkManager 执行。
-
-`DownloadComicWorker` 的处理流程：
-
-1. 读取输入参数 `comicId`。
-2. 把任务状态更新为 `downloading`。
-3. 根据远端图片域名下载封面。
-4. 请求章节图片 HTML，并解析得到图片地址列表。
-5. 使用 `ComicPicImageState.decode()` 下载并解码每一页图片。
-6. 将解码后的图片以 WebP 写入缓存目录。
-7. 更新 Room 中的下载进度。
-8. 把图片目录压缩为 zip。
-9. 保存 zip 路径，并把任务状态更新为 `complete`。
-10. 如果失败，最多重试 3 次，最终把任务状态更新为 `error`。
-
-缓存目录由 `cache/Config.kt` 定义：
-
-| 方法                           | 目录                            |
-| ------------------------------ | ------------------------------- |
-| `getCommonCacheDir()`          | `cacheDir/common`               |
-| `getCommonPicDecodeCacheDir()` | `cacheDir/pic_decode/{comicId}` |
-| `getDownloadDir()`             | `cacheDir/download`             |
-
-下载完成后，本地阅读会优先读取 `cacheDir/download/{comicId}`。如果图片目录不存在，会尝试从 zip 包解压出图片。
-
-## 图片解码
-
-`ComicPicImageState` 负责图片加载、扰乱还原和本地解码缓存。
-
-处理逻辑包括：
-
-- 使用 Coil 以原始尺寸加载图片，避免缩放导致解码后出现白线。
-- 如果图片是 GIF、漫画 ID 小于等于扰乱阈值，或服务端速度参数为 `1`，则不做切片还原。
-- 对需要还原的图片，根据 `comicId + page` 的 MD5 计算 seed。
-- 按 seed 将原图纵向分片，并重新绘制为正确顺序。
-- 解码完成后缓存为 WebP，下次阅读可直接读取缓存文件。
-
-阅读页通过 `ComicReadViewModel.decodeIndex()` 处理预加载。默认预加载数量来自 `LocalSetting.prefetchCount`，当前默认值是 `3`。
-
-## PDF 导出
-
-PDF 导出工具位于 `utils/PdfExport.kt`。导出流程依赖 Android 系统的目录授权 URI，而不是直接写入外部存储路径。
-
-核心行为：
-
-- 读取已缓存漫画的图片目录。
-- 如果目录不存在但 zip 存在，会先解压 zip。
-- 按页码文件名排序图片。
-- 每张图片创建一页同尺寸 PDF 页面。
-- 通过 `DocumentsContract.createDocument()` 在用户授权目录创建 PDF。
-
-导出的文件名格式为：
-
-```text
-{漫画名}_{漫画ID}.pdf
-```
-
-文件名中的非法字符会被替换为 `_`。
-
-## AI 对话
-
-AI 对话相关代码位于 `AiChatRepository`、`AiChatStorage`、`AiChatViewModel` 和 `AiChatScreen`。
-
-当前实现特点：
-
-- 会话保存在 `SecureStorage` 中。
-- ViewModel 支持创建、选择、删除会话。
-- 发送消息后会追加用户消息和空的助手消息，再流式填充助手回复。
-- 当启用“思考”模式时，会在请求消息前插入一条 system 消息，要求上游返回 `<think>...</think>` 思考块。
-- Repository 使用 OkHttp 直接请求上游服务，并逐行读取流式响应。
-
-需要注意的是，`AiChatRepository` 中的 `DEVICE_ID` 和 `COOKIES` 当前为空。若上游服务要求有效设备标识或 Cookie，AI 请求可能返回 HTML、鉴权错误或限制提示。
-
-## 本地设置
-
-`LocalSetting` 定义了应用的本地可配置项：
-
-| 配置                     | 默认值             | 说明                         |
-| ------------------------ | ------------------ | ---------------------------- |
-| `api`                    | `apiList[0]`       | 当前 API 域名                |
-| `apiList`                | 多个内置域名       | 可用于切换 API 入口          |
-| `theme`                  | `auto`             | 支持 `auto`、`light`、`dark` |
-| `shunt`                  | `1`                | 图片分流                     |
-| `shuntList`              | `1`、`2`、`3`、`4` | 可选图片分流                 |
-| `prefetchCount`          | `3`                | 阅读页前后预解码图片数量     |
-| `readMode`               | `scroll`           | 支持滚动阅读和分页阅读       |
-| `showComicScrollReadTip` | `true`             | 是否展示滚动阅读提示         |
-| `showComicPageReadTip`   | `true`             | 是否展示分页阅读提示         |
-
-`LocalSettingManager` 会在应用初始化时从本地读取设置，并在用户修改后立即写回本地存储。
-
-## 发布与版本
-
-版本信息位于 `version.properties`：
-
-```properties
-VERSION_CODE=1.1.2
-VERSION_NAME=1.1.2
-```
-
-`app/build.gradle.kts` 会读取该文件，并把 `VERSION_NAME` 作为 `versionName`。Android 的 `versionCode` 通常应为整数，如果构建工具对当前 `VERSION_CODE=1.1.2` 报错，建议改为类似下面的格式：
-
-```properties
-VERSION_CODE=112
-VERSION_NAME=1.1.2
-```
-
-Release 构建开启了混淆和资源压缩：
-
-```kotlin
-isMinifyEnabled = true
-isShrinkResources = true
-```
-
-APK 输出文件名会带上版本号和 Git 短 hash：
+Linux / macOS 把 `gradlew.bat` 换成 `./gradlew` 即可。产物文件名带版本号和 Git 短 hash：
 
 ```text
 jm-mobile_v{versionName}_{gitHash}.apk
+jm-mobile-clock_v{versionName}_{gitHash}.apk
 ```
 
 ### 发布签名
 
-`release` 变体使用项目自己的签名密钥。配置来源按优先级为 `secrets.properties`（本地，已在 `.gitignore` 中忽略）或同名环境变量：
+`release` 变体使用项目自有密钥，配置来源优先级为 `secrets.properties`（本地，已忽略）→ 同名环境变量：
 
 | 键 | 说明 |
 | --- | --- |
-| `JM_RELEASE_STORE_FILE` | keystore 路径，建议放在仓库之外 |
+| `JM_RELEASE_STORE_FILE` | keystore 路径，放在仓库之外 |
 | `JM_RELEASE_STORE_PASSWORD` | keystore 口令 |
 | `JM_RELEASE_KEY_ALIAS` | 密钥别名 |
-| `JM_RELEASE_KEY_PASSWORD` | 密钥口令，缺省时回退到 `JM_RELEASE_STORE_PASSWORD` |
-| `JM_REQUIRE_RELEASE_SIGNING` | 设为 `true` 时，缺少上述配置直接让构建失败 |
+| `JM_RELEASE_KEY_PASSWORD` | 密钥口令，缺省时回退到 store 口令 |
+| `JM_REQUIRE_RELEASE_SIGNING` | 设为 `true` 时缺少配置直接构建失败 |
 
-生成一份固定密钥（放在仓库外，务必离线备份）：
+可参考仓库内的 `secrets.properties.example` 生成自己的 `secrets.properties`。
 
-```bash
-keytool -genkeypair -v -keystore jm-release.jks -alias jm \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -storepass <口令> -keypass <口令> \
-  -dname "CN=JMcomic Next, OU=Android, O=G1oow, C=CN"
+> [!IMPORTANT]
+> 未配置签名时 release 会回退到 debug 签名并打印警告。debug keystore 由构建机自动生成，**每台机器、每次 CI 都不同**，这类产物只能自用，无法覆盖安装或对外分发。
+
+手表端 `:jm-mobile-clock` 的 release 变体固定使用 debug 签名，目前只适合本地与 CI 自测。
+
+## 架构概览
+
+### 数据流
+
+```text
+Retrofit Service / Room DAO / SecureStorage
+                ↓
+           Repository
+                ↓
+           ViewModel
+                ↓
+      StateFlow / Compose State
+                ↓
+        Composable Screen
 ```
 
-未配置签名时，`release` 变体会回退到 debug 签名并打印警告。debug 密钥由构建机在首次构建时自动生成，**每台机器、每次 CI 运行都不同**，因此这类产物只能本地自用，不能用于分发，也无法覆盖安装其他机器构建的包。
+UI 状态优先复用 `ui/models` 中的 `CommonUIState`、`ListUIState`、`PageAppendUIState`，分页列表走 Paging 3（`ui/pagingSource`）。
 
-### 自动构建
+### 依赖注入
 
-`.github/workflows/android-release.yml` 在 `workflow_dispatch` 或推送 `v*` 标签时构建 Release APK 并上传 artifact。CI 需要配置以下仓库 Secrets：
+`JmApplication` 在启动时通过 Koin 注册以下模块：
 
-| Secret | 说明 |
+| 模块 | 内容 |
 | --- | --- |
-| `JM_RELEASE_KEYSTORE_BASE64` | keystore 文件的 base64 内容 |
-| `JM_RELEASE_STORE_PASSWORD` | keystore 口令 |
-| `JM_RELEASE_KEY_ALIAS` | 密钥别名 |
-| `JM_RELEASE_KEY_PASSWORD` | 密钥口令 |
+| `appModule` | 协程作用域、各 Storage、Manager、AI 仓库、全局 ViewModel |
+| `coilModule` | 全局 `ImageLoader` 与封面缓存 |
+| `comicModule` | 漫画仓库与漫画相关 ViewModel |
+| `retrofitModule` | Retrofit、OkHttp、拦截器与 Service |
+| `userModule` | 用户仓库与用户 ViewModel |
+| `databaseModule` | Room 数据库、下载 DAO、下载 Manager、下载与缓存迁移 Worker |
 
-生成 base64：
+### 启动流程
 
-```bash
-base64 -w0 jm-release.jks > jm-release.b64
+`App` 先读取本地设置决定是否锁屏，再调用 `GlobalViewModel.init()`。初始化任务来自所有实现 `AppInitTask` 的对象，按 `AppTaskInfo.sort` 串行执行：本地设置 → DoH 与 Retrofit 配置 → 远端设置 → 用户与搜索历史 → 阅读历史。全部完成后 `InitManager` 的 `deferred` 被完成，网络请求可通过 `InitInterceptor` 等待初始化状态。
+
+### 页面导航
+
+主导航定义在 `ui/screens/AppScreen.kt`，默认入口为 `tab/home`；底部 Tab 为首页、AI（可选入口）、收藏、个人中心，宽屏自动切换为侧边导航栏。
+
+| 路由 | 页面 |
+| --- | --- |
+| `tab/{tabName}` | 底部 Tab 容器 |
+| `comicDetail/{id}` | 漫画详情 |
+| `comicChapter/{id}?currentChapterId={cid}` | 章节列表 |
+| `comicRead/{id}` / `localComicRead/{id}` | 在线阅读 / 本地阅读 |
+| `comicSearch?searchContent=…` / `comicSearchResult/{searchContent}?…` | 搜索入口与搜索结果 |
+| `comicRanking/{targetType}/{targetValue}?period={period}` | 日 / 周 / 月排行 |
+| `comicRecommend` | 每周必看 |
+| `comicRelate/{id}` / `comment/{comicId}` | 相关推荐 / 评论 |
+| `download` / `downloadComicDetail/{id}` | 下载管理 / 已缓存漫画详情 |
+| `userCollectComic` / `userHistoryComic` / `userHistoryComment` | 收藏、阅读历史、评论历史 |
+| `appLocalSetting` | 本地设置 |
+| `appLockSetting` / `colorPalette` / `blockedTags` | 应用锁、配色、屏蔽标签 |
+| `dohSetting` / `cacheCleanup` / `backupRestore` | DoH、缓存清理、备份恢复 |
+| `personaManager` / `logViewer` / `about` | 人设管理、日志、关于 |
+| `sign` / `login` / `extractCode` | 签到、登录、提取编码 |
+
+## 关键实现
+
+### 数据源与网络
+
+- `builtin`：通过 JMComic-Api-Java 的内置客户端直接解析站点，共享同一个 `JmApiClient` 实例，登录态与 Cookie 在仓库之间复用。
+- `network`：Retrofit 请求本地设置里的 API 域名，域名由 `BaseUrlInterceptor` 在运行时替换。
+- `mixed`：先走内置客户端，解析失败时回退到同章节的网络接口。
+
+`EmbeddedClientManager` 会缓存探测到的最快域名（`FastDomainStorage`），Android 6 上直接使用一组验证过的兼容域名，避免启动等待域名探测，内置客户端在某条线路异常时也会自动换线。网络读请求统一包裹在 `retryNetworkRequest` 中，失败按退避策略重试；`DoH` 作为进程级 `Dns` 实现，可让所有应用自有的 OkHttp 客户端走加密 DNS。
+
+漫画图片列表不是标准 JSON：内置客户端与网络接口都会拿到章节页面，再由 `retrofit/DataDecode.kt` 中的解析逻辑提取图片地址、扰乱阈值与速度参数。
+
+### 图片解码
+
+`ComicPicImageState` 负责加载、扰乱还原与本地解码缓存：
+
+- 以原始尺寸解码，避免缩放出白线。
+- GIF、漫画 ID 不高于扰乱阈值，或服务端速度参数为 `1` 时不做切片还原。
+- 需要还原时以 `comicId + page` 的 MD5 作为 seed，纵向分片后重绘为正确顺序。
+- 解码结果以 WebP 写入 `cacheDir/pic_decode/{comicId}`，下次直接读缓存。
+
+### 下载与缓存目录
+
+| 目录 | 内容 |
+| --- | --- |
+| `filesDir/download/{comicId}` | 漫画正文、`config.json`、封面与章节 |
+| `cacheDir/pic_decode/{comicId}` | 阅读页解码缓存 |
+| `cacheDir/comic_covers` | Coil 封面缓存，可被系统回收 |
+| `cacheDir/common` | 其他临时文件 |
+
+漫画属于用户数据，因此放在 `filesDir` 而不是 `cacheDir`；1.2.5 之前的 `cacheDir/download` 会在启动时迁移到新位置。下载记录保存在 Room 的 `download_comics` 表（数据库版本 4），字段包括 `id`、`name`、`authorList`、`tagList`、`coverPath`、`zipPath`、`progress`、`status`、`createTime`、`groupId`、`groupName`、`chapterName`。
+
+### 安全存储与备份
+
+`SecureStorage` 统一序列化并加密写入 SharedPreferences，`CryptoManager` 优先使用 Android Keystore 的 AES/GCM 密钥，不可用时退化为带 `plain:` 前缀的 Base64 编码以兼容异常设备。
+
+备份文件为版本化 JSON（当前格式版本 4），可选用密码或图案保护，并可选绑定本机生物识别；密码与图案始终是跨设备恢复的保底凭据。
+
+## 版本与发布
+
+`version.properties` 是唯一版本来源，`app` 与 `jm-mobile-clock` 都读它：
+
+```properties
+VERSION_CODE=136
+VERSION_NAME=1.2.16
 ```
 
-工作流会把密钥还原到 `$RUNNER_TEMP/jm-release.jks` 并设置 `JM_REQUIRE_RELEASE_SIGNING=true`；缺少密钥时构建直接失败，避免再产出签名不稳定的“发布包”。
+发版规则：
 
-构建成功后会自动发布 GitHub Release：标签取 `version.properties` 里的 `v{VERSION_NAME}`，资产是 `jm-mobile_v*_*.apk`，同版本重复构建会覆盖旧资产。发布步骤只在 `main` 分支或 `v*` 标签上执行，分支上的验证构建只产出 artifact。
+- `VERSION_CODE` 必须为正整数，每次发版 +1，只增不减、不复用历史值。
+- `VERSION_NAME` 使用 `MAJOR.MINOR.PATCH`，逐段单调递增，不带 `v` 前缀。
+- 标签统一为 `v{VERSION_NAME}`，由 CI 依据 `version.properties` 创建，不要手打。
+- 面向用户的变更同步写入 `CHANGELOG` 对应版本段落，CI 会把该段落填入 Release 说明。
 
-## 应用内更新
+`.github/workflows/android-release.yml` 在推送 `v*` 标签或手动触发时构建 Release APK（`JM_REQUIRE_RELEASE_SIGNING=true`），并上传 `jm-mobile-release` artifact。构建成功后自动发布 GitHub Release：标签取 `v{VERSION_NAME}`，资产为 `jm-mobile_v*_*.apk`，同版本重复构建会覆盖旧资产。发布步骤只在 `main` 分支或 `v*` 标签上执行，分支验证构建只产出 artifact。
 
-「设置 → 检查更新」手动检查，App 启动后也会静默检查一次（24 小时内不重复请求）。更新源是本仓库 fork 的 GitHub Releases（`G1oow/jmcomic-next`，常量见 `utils/AppUpdateVersion.kt`）：
+需要的仓库 Secrets：`JM_RELEASE_KEYSTORE_BASE64`、`JM_RELEASE_STORE_PASSWORD`、`JM_RELEASE_KEY_ALIAS`、`JM_RELEASE_KEY_PASSWORD`。
 
-- 读取 `https://api.github.com/repos/G1oow/jmcomic-next/releases/latest`，版本号来自标签，按 `VERSION_NAME` 逐段比较。
-- 检测到新版本会弹提示，可直接在应用内下载 APK（支持暂停、后台下载、通知进度），下载完成后调起系统安装器。
-- Android 8.0 起安装未知来源应用需要单独授权，首次安装会跳转到本应用的授权页。
-- 想要被检测到，Release 必须是非草稿、非预发布并标记为 latest。
+### 应用内更新
 
-## 开发说明
+「设置 → 检查更新」可手动检查，启动后也会静默检查（24 小时内不重复请求）。更新源是本 fork 的 GitHub Releases，常量在 `utils/AppUpdateVersion.kt`：
 
-新增页面时，通常需要：
+- 读取 `https://api.github.com/repos/G1oow/jmcomic-next/releases/latest`，按 `VERSION_NAME` 逐段比较版本。
+- 支持应用内下载（暂停、后台下载、通知进度），完成后调起系统安装器。
+- Release 必须是非草稿、非预发布并标记为 latest，否则永远检测不到更新。
 
-1. 在 `ui/screens` 下创建新的 Compose 页面。
-2. 如果页面需要业务状态，在 `ui/viewModel` 中添加 ViewModel。
-3. 在对应的 Koin 模块中注册 ViewModel。
-4. 在 `AppScreen.kt` 中添加导航路由。
-5. 如果需要底部 Tab 入口，在 `tabScreen` 相关组件中补充入口。
+> [!IMPORTANT]
+> 换仓库时要同步修改 `utils/AppUpdateVersion.kt` 中的常量；已发布的 Release 与标签不要删除或改名，用户端的检查与下载链接都指向它们。
 
-新增接口时，通常需要：
+## 开发约定
 
-1. 在 `retrofit/service` 中为对应 Service 添加 Retrofit 方法。
-2. 在 `retrofit/model` 中添加响应模型。
-3. 在 `repository` 中添加抽象方法。
-4. 在 `repository/impl` 中通过 `safeApiCall` 或 `safeStringCall` 包装请求。
-5. 在 ViewModel 中调用 Repository，并转成 UI 状态。
-
-新增本地持久化数据时，可根据数据性质选择：
-
-- 简单配置或小体量状态：放入 `storage`，通过 `SecureStorage` 保存。
-- 需要查询、分页、状态更新的数据：新增 Room Entity、DAO 和 Database 配置。
-
-新增下载类后台任务时，应优先使用 WorkManager，并在 `databaseModule` 中通过 Koin 注册 Worker，避免直接在 UI 层启动长时间任务。
+- 代码结构、命名、Compose 与状态规范见 `AGENTS.md`，改动前先读一遍。
+- 新增页面：`ui/screens` 建 Compose 页面 → 需要状态时在 `ui/viewModel` 加 ViewModel → Koin 注册 → `AppScreen.kt` 加路由 → 需要 Tab 入口时改 `tabScreen`。
+- 新增接口：`retrofit/service` 加方法 → `retrofit/model` 加响应模型 → `repository` 加抽象方法 → `repository/impl` 用 `safeApiCall` / `safeStringCall` 包装 → ViewModel 消费。
+- 新增持久化：小体量配置走 `storage/` + `SecureStorage`；需要查询与分页的数据新增 Room Entity / DAO 并注册到 `databaseModule`。
+- 新增后台任务：在 `worker/` 实现 Worker，通过 Koin 注册，禁止在 UI 层直接起长任务。
+- 提交前至少跑一次 `:app:compileDebugKotlin`；纯逻辑改动补单元测试并跑 `:app:testDebugUnitTest`；改构建脚本、R8 规则或 workflow 时额外跑 `:app:assembleRelease`。
 
 ## 常见问题
 
 ### Gradle 同步失败
 
-优先检查 Android Studio、JDK、Android SDK 和 Gradle 插件版本。项目当前使用较新的 AGP、Kotlin 和 Compose BOM，如果本地 Android Studio 版本过旧，可能无法识别插件或 SDK。
+先确认 Android Studio、JDK、Android SDK 版本：项目使用 AGP 9.1、Kotlin 2.4 与 Compose BOM 2026.01，旧版 IDE 可能无法识别插件或 `compileSdk 36`。网络受限时检查 `settings.gradle.kts` 的镜像配置。
 
-### API 请求失败
+### 接口请求失败
 
-先在设置页切换 API 域名，再确认设备网络可访问对应服务。项目的 baseUrl 是运行时动态替换的，实际请求地址取决于本地设置和拦截器。
+先在设置页切换 API 域名与数据源（内置 / 网络 / 混合），再确认设备能访问对应服务。baseUrl 是运行时动态替换的，实际地址取决于本地设置与拦截器。
 
-### 图片加载成功但显示异常
+### 图片显示白线或错位
 
-阅读页依赖原始尺寸图片和本地解码缓存。若图片出现白线、错位或旧缓存问题，可以尝试清理应用缓存后重新打开漫画。
+阅读页依赖原始尺寸解码与本地解码缓存。可尝试清理应用缓存后重新打开；若只在特定分流下出现，切换到其他图片分流再试。
 
 ### 下载任务一直失败
 
-下载依赖网络、远端图片域名、图片解码和本地缓存写入。可以先确认在线阅读是否正常，再检查 Room 中任务状态和缓存目录是否存在对应图片。
+下载依赖网络、图片域名、解码与本地写入。先确认在线阅读正常，再检查下载目录是否有该漫画的目录与 `config.json`，必要时用「缓存完整性检查」定位缺失文件。
 
 ### PDF 导出失败
 
-PDF 导出需要系统目录授权。请选择可写入的目录，并确认对应漫画已经完成缓存且本地图片可读取。
+导出需要系统目录授权，请选择可写目录，并确认对应漫画已完成缓存、本地图片可读。
 
-### AI 对话不可用
+### 忘记应用锁
 
-AI 对话依赖上游服务状态、Cookie 和设备标识。当前仓库中相关常量为空，如果上游服务限制未登录访问，请先补充自己的合法访问配置。（理论上来讲这家它是不做这些参数的硬性要求的，不加也能跑）
+应用锁凭据只保存在本地且不可绕过，重装会清空全部本地数据。建议开启前先做好备份。
 
-## 已知注意点
+## 致谢
 
-- `ComicService.collectComic()` 同时被 `collectComic()` 和 `unCollectComic()` 调用，取消收藏是否真正生效取决于上游接口行为。
-- `DownloadComic.status` 注释只写了 `pending || downloading || complete`，DAO 和 Worker 实际还会使用 `error`、`paused` 等状态，后续可统一为枚举或 sealed class。
-- `Coil` 磁盘缓存配置注释写的是 `200MB`，实际代码为 `1024L * 1024 * 1024`，即约 1GB。
-- `version.properties` 中的 `VERSION_CODE` 当前不是整数，如果构建时报版本号错误，需要按 Android 规范改为整数。
-- Release 签名依赖本地 `secrets.properties` 或 CI Secrets（见“发布签名”）。未配置时会回退 debug 签名，产物无法覆盖安装他人构建的包；签名密钥一旦丢失，就无法再签出可覆盖升级的同包名 APK，务必离线备份。
+本项目离不开 [LINUX DO 论坛](https://linux.do) 与 [RawChat 团队](https://linux.do/u/RawChat) 的支持，也感谢上游项目 [Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile) 与 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java)。
 
-## 二次开源说明
+<details>
+<summary>提交建议与反馈问题的朋友们</summary>
 
-本项目基于 `Dedicatus546/jm-mobile` 继续整理和维护。当前仓库重点放在以下方向：
+LINUX DO 提供建议的佬友：dijunwanshou、zeroLin、dunxuan、lyston、catnap、JasonGui、sswh317、Jealousy、lxy521031、Timothy、sylarQAQ、cftyhn、chowhound。
 
-- 统一 Compose 页面风格，使主要页面更接近 Material You 设计语言。
-- 修复阅读进度条、登录页、AI 对话解析、本地缓存详情等使用问题。
-- 增加缓存漫画详情展示和 PDF 导出流程。
-- 支持 Android 6.0 及以上设备运行。
+GitHub 提交 issue 的朋友：yinshu2002、lyston11、Nines70、lin39c5bb、ZhangXusen、Luo923、snakeJohn、franklleee、788gdd、ban-code-art、EntID-Ke、yevonou、j1v-software、Hanestl、LanHuXiangYuan、yxxbc、Yanzietta、funnytime75、xiban123、plane714、swhje。
+
+为项目添砖加瓦的朋友：Jea1ousy、linze0721、hifumi_mizuhara、serious198706、funnytime75。
+
+以及一直提出需求的 QQ 群友们。
+
+</details>
 
 ## 免责声明
 
-本项目仅供学习、研究和技术交流使用。项目作者与任何第三方服务、原始应用或内容提供方无关。
+本项目仅供学习、研究与技术交流使用。项目作者与任何第三方服务、原始应用或内容提供方无关。
 
-使用者应自行遵守当地法律法规以及相关服务条款。因使用本项目产生的任何法律、版权、账号、数据或财务风险均由使用者自行承担。
-
-## License
-
-本项目遵循仓库中的 `LICENSE` 文件，许可证为 GPL-3.0。原项目版权和许可证信息请参考 `Dedicatus546/jm-mobile`。
+使用者应自行遵守当地法律法规以及相关服务条款。因使用本项目产生的任何法律、版权、账号、数据或财务风险均由使用者自行承担。许可证见仓库中的 `LICENSE`（GPL-3.0），原项目版权与许可信息请参考 `Dedicatus546/jm-mobile`。
