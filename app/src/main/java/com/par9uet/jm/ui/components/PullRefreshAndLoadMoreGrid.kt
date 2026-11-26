@@ -60,6 +60,7 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
     header: (@Composable () -> Unit)? = null,
     itemVisible: (item: T) -> Boolean = { true },
     enablePullRefresh: Boolean = true,
+    emptyText: String = "当前条件没有漫画",
     pageState: ComicPageState? = null,
     onPageChange: (Int) -> Unit = {},
     onRefresh: (() -> Unit)? = null,
@@ -95,7 +96,7 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
                     ) {
                         val error = lazyPagingItems.loadState.refresh as? LoadState.Error
                         Text(
-                            text = error?.error?.message ?: "当前条件没有漫画",
+                            text = error?.error?.message ?: emptyText,
                             color = if (error == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error,
                         )
                         if (error != null) {
@@ -166,7 +167,8 @@ fun <T : Any> PullRefreshAndLoadMoreGrid(
     val gridContent: @Composable () -> Unit = {
         val firstKey = if (lazyPagingItems.itemCount > 0) lazyPagingItems.peek(0)?.let(key) else null
         val reveal = Modifier.revealComicPage(
-            pageState?.page to firstKey, ready = firstKey != null && !isRefreshing,
+            contentKey = pageState?.page to firstKey,
+            ready = firstKey != null && !isRefreshing,
         )
         if (LocalTabFloatingChrome.current == null) {
             Column(modifier = Modifier.fillMaxSize()) {

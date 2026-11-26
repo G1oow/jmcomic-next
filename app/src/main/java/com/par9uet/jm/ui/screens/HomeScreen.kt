@@ -1,5 +1,6 @@
 package com.par9uet.jm.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.Password
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,8 +52,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -70,11 +72,14 @@ import com.par9uet.jm.ui.components.ComicSkeleton
 import com.par9uet.jm.ui.components.ScrollToTopButton
 import com.par9uet.jm.ui.components.TabSkeleton
 import com.par9uet.jm.ui.components.adaptiveComicGridCells
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleBottomMargin
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsuleHeight
+import com.par9uet.jm.ui.screens.tabScreen.ChromeCapsulePagerBlock
+import com.par9uet.jm.ui.screens.tabScreen.LocalTabFloatingChrome
 import com.par9uet.jm.ui.screens.tabScreen.LocalTabHeader
-import com.par9uet.jm.ui.state.rememberTabIndexState
 import com.par9uet.jm.ui.viewModel.ComicViewModel
-import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.ui.pagingSource.COMIC_DISPLAY_PAGE_SIZE
+import com.par9uet.jm.ui.viewModel.UserViewModel
 import com.par9uet.jm.utils.filterBlockedTags
 import com.par9uet.jm.utils.orderHomeCategories
 import coil.ImageLoader
@@ -216,9 +221,10 @@ fun HomeScreen(
     val gridState = rememberLazyGridState()
     val scope = rememberCoroutineScope()
     val onTabClick: (index: Int) -> Unit = {
-        selectedCategoryId = categories
-            .getOrNull(it.coerceIn(0, (categories.size - 1).coerceAtLeast(0)))
-            ?.id
+        val targetIndex = it.coerceIn(0, (categories.size - 1).coerceAtLeast(0))
+        if (targetIndex != selectedTabIndex) {
+            selectedCategoryId = categories.getOrNull(targetIndex)?.id
+        }
     }
 
     if (showCategorySort) {
@@ -254,6 +260,13 @@ fun HomeScreen(
                 emptyList()
             }
         }
+        val floatingChrome = LocalTabFloatingChrome.current
+        val bottomClearance = if (floatingChrome != null) {
+            floatingChrome.navigationBarInset + ChromeCapsuleHeight + ChromeCapsuleBottomMargin * 2 +
+                if (pagination.state.enabled) ChromeCapsulePagerBlock else 0.dp
+        } else {
+            0.dp
+        }
         ComicCoverPreloadEffect(nextPageComics, enabled = !homeComicState.isLoading)
         PullToRefreshBox(
             modifier = Modifier.fillMaxSize(),
@@ -264,7 +277,7 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .revealComicPage(
-                        selectedTabIndex to pagination.state.page,
+                        contentKey = selectedTabIndex to pagination.state.page,
                         ready = pageComics.isNotEmpty(),
                     )
                     .pointerInput(selectedTabIndex, categories.map { it.id }) {
@@ -299,7 +312,7 @@ fun HomeScreen(
                 columns = adaptiveComicGridCells(localSetting.homeGridColumns),
                 verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp)
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 16.dp + bottomClearance)
             ) {
                 item(span = { GridItemSpan(maxLineSpan) }) {
                     // 顶栏和漫画列表同一条滚动流：滑动时一起滚出屏幕。
@@ -329,10 +342,11 @@ fun HomeScreen(
                 }
                 if (comicList.isEmpty() && !homeComicState.isLoading) {
                     item(span = { GridItemSpan(maxLineSpan) }) {
+                        val isError = homeComicState.isError && homeComicState.list.isEmpty()
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 48.dp),
+                                .padding(vertical = 48.dp, horizontal = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -340,14 +354,26 @@ fun HomeScreen(
                                 imageVector = Icons.Default.Search,
                                 contentDescription = null,
                                 modifier = Modifier.size(48.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                tint = if (isError) {
+                                    MaterialTheme.colorScheme.error.copy(alpha = 0.72f)
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                }
                             )
                             Text(
-                                text = if (allExcludedTags.isNotEmpty()) "当前分类的漫画均被标签排除过滤" else "暂无漫画",
+                                text = when {
+                                    isError -> homeComicState.errorMsg?.ifBlank { "首页加载失败，请重试" } ?: "首页加载失败，请重试"
+                                    allExcludedTags.isNotEmpty() -> "当前分类的漫画均被标签排除过滤"
+                                    else -> "暂无漫画"
+                                },
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            if (allExcludedTags.isNotEmpty()) {
+                            if (isError) {
+                                Button(onClick = { comicViewModel.getHomeComic(forceRefresh = true) }) {
+                                    Text("重试")
+                                }
+                            } else if (allExcludedTags.isNotEmpty()) {
                                 Text(
                                     text = "可在 设置 → 标签排除 中调整",
                                     style = MaterialTheme.typography.bodySmall,
@@ -362,7 +388,7 @@ fun HomeScreen(
                 gridState = gridState,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(16.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp + bottomClearance),
             )
         }
         if (pagination.state.enabled) {
@@ -566,13 +592,19 @@ private fun HomeQuickAction(
     label: String,
     onClick: () -> Unit
 ) {
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val borderColor = remember(outlineVariant) {
+        outlineVariant.copy(alpha = 0.35f)
+    }
     Surface(
         modifier = modifier
             .height(46.dp)
+            .clip(MaterialTheme.shapes.large)
             .clickable(onClick = onClick),
         shape = MaterialTheme.shapes.large,
         color = MaterialTheme.colorScheme.secondaryContainer,
-        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        border = BorderStroke(1.dp, borderColor),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp),

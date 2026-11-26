@@ -1,5 +1,6 @@
 package com.par9uet.jm.ui.screens.tabScreen
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -66,15 +68,23 @@ fun TabScreen(
             }
         }
     }
-    // 稳定 header lambda：否则每次 TabScreen 重组都会让三个列表的头部重新组合。
-    val tabHeader: @Composable () -> Unit = remember(statusBarInset) {
-        { TabHeader(inset = statusBarInset) }
+    // 每个 Tab 各自绑定固定标题的 header，避免切页退场期间因路由变化导致标题消失/重排跳动。
+    val homeHeader: @Composable () -> Unit = remember(statusBarInset) {
+        { TabHeader(inset = statusBarInset, title = null) }
     }
+    val userHeader: @Composable () -> Unit = remember(statusBarInset) {
+        { TabHeader(inset = statusBarInset, title = "个人中心") }
+    }
+    val pageBackground = MaterialTheme.colorScheme.background
+
     CompositionLocalProvider(
         LocalTabNavController provides tabNavController,
-        LocalTabHeader provides tabHeader,
     ) {
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(pageBackground)
+        ) {
             val useNavigationRail = maxWidth >= 700.dp
             val hideBottomCapsule = currentRoute == "ai" && imeVisible
             val showBottomCapsule = !useNavigationRail && !hideBottomCapsule
@@ -94,53 +104,57 @@ fun TabScreen(
                         NavigationRailComponent()
                     }
                     NavHost(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize()
+                            .background(pageBackground),
                         navController = tabNavController,
-                        enterTransition = {
-                            motion.enter(
-                                fromLeft = entersFromLeft(
-                                    initialState.destination.route,
-                                    targetState.destination.route,
-                                )
-                            )
-                        },
-                        exitTransition = { motion.exit() },
-                        // pop 也按位置判方向：回到左边的首页时是从右边进场，不是固定从左边。
-                        popEnterTransition = {
-                            motion.enter(
-                                fromLeft = entersFromLeft(
-                                    initialState.destination.route,
-                                    targetState.destination.route,
-                                )
-                            )
-                        },
-                        popExitTransition = { motion.exit() },
+                        // M3 Fade Through：旧页先完全淡出，新页再柔和显现，彻底避免双页重叠残影与位移跳动。
+                        enterTransition = { motion.tabEnter() },
+                        exitTransition = { motion.tabExit() },
+                        popEnterTransition = { motion.tabEnter() },
+                        popExitTransition = { motion.tabExit() },
                         startDestination = tabName
                     ) {
                         composable("home") {
-                            HomeScreen()
+                            CompositionLocalProvider(LocalTabHeader provides homeHeader) {
+                                Box(modifier = Modifier.fillMaxSize().background(pageBackground)) {
+                                    HomeScreen()
+                                }
+                            }
                         }
                         composable("user") {
-                            UserScreen()
+                            CompositionLocalProvider(LocalTabHeader provides userHeader) {
+                                Box(modifier = Modifier.fillMaxSize().background(pageBackground)) {
+                                    UserScreen()
+                                }
+                            }
                         }
                         composable("ai") {
                             // 聊天页自己不管系统栏，内边距放在 destination 内：切页时外层布局不动。
-                            Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(pageBackground)
+                                    .statusBarsPadding()
+                            ) {
                                 AiChatScreen()
                             }
                         }
                         composable("collect") {
-                            if (isLogin) {
-                                UserCollectComicScreen(
-                                    useScaffold = false,
-                                )
-                            } else {
-                                Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
-                                    // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
-                                    LoginRequiredPlaceholder(
-                                        message = "登录后可查看收藏、历史与签到",
-                                        onLogin = { mainNavController.navigate("login") },
+                            Box(modifier = Modifier.fillMaxSize().background(pageBackground)) {
+                                if (isLogin) {
+                                    UserCollectComicScreen(
+                                        useScaffold = false,
                                     )
+                                } else {
+                                    Box(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
+                                        // 不在这里跳登录页：登录页返回后本页会重新组合，跳转会被再次触发。
+                                        LoginRequiredPlaceholder(
+                                            message = "登录后可查看收藏、历史与签到",
+                                            onLogin = { mainNavController.navigate("login") },
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -161,17 +175,4 @@ fun TabScreen(
 
 val LocalTabNavController = staticCompositionLocalOf<NavHostController> {
     error("none")
-}
-
-/** 底栏顺序，只用来判断切页时页面该从哪边滑进来。 */
-private val TabRoutes = listOf("home", "ai", "collect", "user")
-
-/**
- * 目标页在来源页右边，说明是从左边那一项点过来的，页面就从左边滑进来；
- * 反过来从右边滑进来。最右的「个人中心」因此只会从左边入场。
- */
-internal fun entersFromLeft(initialRoute: String?, targetRoute: String?): Boolean {
-    val initial = TabRoutes.indexOf(initialRoute)
-    val target = TabRoutes.indexOf(targetRoute)
-    return initial >= 0 && target >= 0 && target > initial
 }

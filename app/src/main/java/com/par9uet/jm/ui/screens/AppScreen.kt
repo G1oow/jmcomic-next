@@ -1,6 +1,8 @@
 package com.par9uet.jm.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -43,20 +45,15 @@ fun AppScreen(
         LocalMainNavController provides mainNavController,
     ) {
         NavHost(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
             navController = mainNavController,
-            enterTransition = { motion.enter() },
-            exitTransition = { motion.exit() },
-            popEnterTransition = { motion.enter(fromLeft = true) },
-            popExitTransition = { motion.exit() },
-//            startDestination = "comicQuickSearch/百合"
-//            startDestination = "appLocalSetting"
+            enterTransition = { motion.pushEnter() },
+            exitTransition = { motion.pushExit() },
+            popEnterTransition = { motion.popEnter() },
+            popExitTransition = { motion.popExit() },
             startDestination = "tab/home",
-//            startDestination = "comicRead/1044155",
-//             startDestination = "comicDetail/1044155"
-//            startDestination = "comicSearch"
-//            startDestination = "sign",
-//            startDestination = "download"
         ) {
             composable(
                 route = "tab/{tabName}?",
@@ -65,8 +62,6 @@ fun AppScreen(
                         type = NavType.StringType; defaultValue = null; nullable = true
                     }
                 ),
-//                enterTransition = { slideInHorizontally(initialOffsetX = { width -> -width }) },
-//                exitTransition = { slideOutHorizontally(targetOffsetX = { width -> -width }) }
             ) { backStackEntry ->
                 val tabName = backStackEntry.arguments?.getString("tabName") ?: "home"
                 TabScreen(tabName = tabName)
@@ -120,6 +115,10 @@ fun AppScreen(
                 arguments = listOf(
                     navArgument(name = "id") { type = NavType.IntType; defaultValue = -1 }
                 ),
+                enterTransition = { motion.readerEnter() },
+                exitTransition = { motion.readerExit() },
+                popEnterTransition = { motion.readerEnter() },
+                popExitTransition = { motion.readerExit() },
             ) { backStackEntry ->
                 val id = backStackEntry.arguments?.getInt("id") ?: -1
                 ComicReadScreen(comicId = id)
@@ -219,6 +218,10 @@ fun AppScreen(
                 arguments = listOf(
                     navArgument(name = "id") { type = NavType.IntType; defaultValue = -1 }
                 ),
+                enterTransition = { motion.readerEnter() },
+                exitTransition = { motion.readerExit() },
+                popEnterTransition = { motion.readerEnter() },
+                popExitTransition = { motion.readerExit() },
             ) { backStackEntry ->
                 val id = backStackEntry.arguments?.getInt("id") ?: -1
                 ComicReadScreen(comicId = id, localOnly = true)
