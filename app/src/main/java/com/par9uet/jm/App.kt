@@ -146,7 +146,7 @@ fun App(
         userViewModel.signIn()
     }
 
-    // 自动检查更新：解锁且设置加载完成后，一天最多请求一次 GitHub Release。
+    // 自动检查更新：解锁且设置加载完成后，每次冷启动请求一次 GitHub Release。
     LaunchedEffect(settingsLoaded, isLocked, showOnboarding) {
         if (!settingsLoaded || isLocked || showOnboarding) return@LaunchedEffect
         appUpdateManager.checkOnLaunch()

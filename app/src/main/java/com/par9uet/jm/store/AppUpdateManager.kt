@@ -15,6 +15,7 @@ import com.par9uet.jm.utils.isUpdateAvailable
 import com.par9uet.jm.utils.logError
 import com.par9uet.jm.utils.normalizeVersion
 import com.par9uet.jm.utils.selectApkAsset
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,6 +71,9 @@ class AppUpdateManager(
     private val _state = MutableStateFlow(AppUpdateState())
     val state = _state.asStateFlow()
 
+    /** 进程内只发一次启动检查：解锁、设置加载都会让上层的 LaunchedEffect 重跑。 */
+    private val launchCheckStarted = AtomicBoolean(false)
+
     /** 已安装版本；读不到时用 [UNKNOWN_APP_VERSION]，此时不会判为有更新。 */
     val installedVersion: String by lazy {
         runCatching {
@@ -78,17 +82,16 @@ class AppUpdateManager(
     }
 
     /**
-     * 启动时静默检查：间隔内不重复请求，同一版本被跳过后也不再提示。
+     * 启动时静默检查：每次冷启动请求一次，发现新版本就提示；被「跳过此版本」的版本不再提示。
      */
     fun checkOnLaunch() {
-        if (System.currentTimeMillis() - storage.getLastCheckAt() < CHECK_INTERVAL_MS) return
+        if (!launchCheckStarted.compareAndSet(false, true)) return
         scope.launch { check(showPrompt = true) }
     }
 
-    /** 设置页的手动检查：不受节流和「跳过此版本」限制。 */
+    /** 设置页的手动检查：不受「跳过此版本」限制。 */
     suspend fun refresh(): Result<AppRelease> {
         val result = fetchLatestRelease()
-        result.onSuccess { storage.setLastCheckAt(System.currentTimeMillis()) }
         return result
     }
 
@@ -103,7 +106,6 @@ class AppUpdateManager(
         _state.update { it.copy(checking = true) }
         fetchLatestRelease().fold(
             onSuccess = { release ->
-                storage.setLastCheckAt(System.currentTimeMillis())
                 val newer = isUpdateAvailable(release.version, installedVersion)
                 val skipped = storage.getSkippedVersion()
                 val shouldPrompt = showPrompt && newer && release.hasDownload && release.version != skipped
@@ -152,11 +154,6 @@ class AppUpdateManager(
                 )
             }
         }
-    }
-
-    private companion object {
-        /** 自动检查间隔：一天内不重复请求 GitHub。 */
-        const val CHECK_INTERVAL_MS = 24L * 60L * 60L * 1000L
     }
 }
 
