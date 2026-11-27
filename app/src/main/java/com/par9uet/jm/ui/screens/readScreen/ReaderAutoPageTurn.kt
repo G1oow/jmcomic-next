@@ -15,6 +15,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
@@ -25,6 +26,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -174,6 +176,27 @@ fun AutoPageTurnEffect(
             if (!onAdvance()) {
                 onFinish()
             }
+        }
+    }
+}
+
+/**
+ * 自动翻页期间的屏幕常亮。
+ *
+ * 倒计时在非 RESUMED 状态会暂停，设备一旦按系统超时息屏就等于把自动翻页打断，
+ * 所以运行期间给窗口打上 KEEP_SCREEN_ON。退出运行态、离开阅读页或进程重建时
+ * 由 onDispose 还原切换前的值，不残留常亮标记。
+ */
+@Composable
+fun KeepScreenOnEffect(enabled: Boolean) {
+    val view = LocalView.current
+    DisposableEffect(view, enabled) {
+        if (!enabled) {
+            onDispose { }
+        } else {
+            val previous = view.keepScreenOn
+            view.keepScreenOn = true
+            onDispose { view.keepScreenOn = previous }
         }
     }
 }

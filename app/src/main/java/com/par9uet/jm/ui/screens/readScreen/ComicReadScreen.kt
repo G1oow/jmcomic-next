@@ -244,6 +244,9 @@ fun ComicReadScreen(
         },
         onProgress = { autoPageTurnProgress = it }
     )
+    // 自动翻页运行期间保持屏幕常亮：系统超时息屏会让倒计时停在非 RESUMED 状态，
+    // 阅读中的自动翻页就此中断
+    KeepScreenOnEffect(enabled = autoPageTurnRunning)
 
     val volumePageTurnHandler = rememberUpdatedState<(Boolean) -> Unit> { isVolumeUp ->
         val currentIndex = comicReadViewModel.currentIndexState.intValue
