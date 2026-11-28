@@ -17,6 +17,9 @@ import com.par9uet.jm.utils.log
 import com.par9uet.jm.utils.normalizeBlockedTag
 import com.par9uet.jm.utils.normalizeBlockedTagList
 import com.par9uet.jm.utils.normalizeBlockedTagTemplates
+import com.par9uet.jm.utils.normalizeCommentFilterPresetIds
+import com.par9uet.jm.utils.normalizeCommentKeyword
+import com.par9uet.jm.utils.normalizeCommentKeywordList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -386,6 +389,51 @@ class LocalSettingManager(
             )
         }
 
+    fun updateCommentKeywordFilterEnabled(enabled: Boolean) =
+        updateSetting { it.copy(commentKeywordFilterEnabled = enabled) }
+
+    fun addCommentBlockedKeywords(keywords: List<String>) {
+        val normalized = normalizeCommentKeywordList(keywords)
+        if (normalized.isEmpty()) return
+        updateSetting {
+            it.copy(
+                commentBlockedKeywords = normalizeCommentKeywordList(
+                    it.commentBlockedKeywords + normalized
+                )
+            )
+        }
+    }
+
+    fun removeCommentBlockedKeyword(keyword: String) {
+        val target = normalizeCommentKeyword(keyword)
+        if (target.isBlank()) return
+        updateSetting {
+            it.copy(
+                commentBlockedKeywords = it.commentBlockedKeywords.filterNot { item ->
+                    item.equals(target, ignoreCase = true)
+                }
+            )
+        }
+    }
+
+    fun clearCommentBlockedKeywords() =
+        updateSetting { it.copy(commentBlockedKeywords = emptyList()) }
+
+    fun setCommentFilterPresetEnabled(presetId: String, enabled: Boolean) =
+        updateSetting {
+            val next = if (enabled) {
+                it.commentEnabledPresetIds + presetId
+            } else {
+                it.commentEnabledPresetIds.filterNot { id -> id == presetId }
+            }
+            it.copy(commentEnabledPresetIds = normalizeCommentFilterPresetIds(next))
+        }
+
+    fun updateCommentEnabledPresetIds(presetIds: List<String>) =
+        updateSetting {
+            it.copy(commentEnabledPresetIds = normalizeCommentFilterPresetIds(presetIds))
+        }
+
     /**
      * 应用从备份恢复的 [LocalSetting]。
      *
@@ -415,6 +463,13 @@ class LocalSettingManager(
                 autoPageTurnIntervalMs = setting.autoPageTurnIntervalMs.takeIf {
                     it in AUTO_PAGE_TURN_MIN_INTERVAL_MS..AUTO_PAGE_TURN_MAX_INTERVAL_MS
                 } ?: DEFAULT_AUTO_PAGE_TURN_INTERVAL_MS,
+                // 旧版本备份缺少这些 List 字段时 Gson 会给出 null，这里规范化回安全值
+                commentBlockedKeywords = normalizeCommentKeywordList(
+                    runCatching { setting.commentBlockedKeywords }.getOrNull().orEmpty()
+                ),
+                commentEnabledPresetIds = normalizeCommentFilterPresetIds(
+                    runCatching { setting.commentEnabledPresetIds }.getOrNull().orEmpty()
+                ),
             )
         }
         val newLauncherDisguise = _localSettingState.value.launcherDisguise

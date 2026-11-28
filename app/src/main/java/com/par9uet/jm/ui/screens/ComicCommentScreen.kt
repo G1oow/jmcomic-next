@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.ThumbUpOffAlt
 import androidx.compose.material3.Button
@@ -69,12 +70,14 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.par9uet.jm.data.models.Comment
+import com.par9uet.jm.store.LocalSettingManager
 import com.par9uet.jm.store.UserManager
 import com.par9uet.jm.ui.components.Comment
 import com.par9uet.jm.ui.components.CommentSkeleton
 import com.par9uet.jm.ui.components.CommonScaffold
 import com.par9uet.jm.ui.components.PullRefreshAndLoadMoreGrid
 import com.par9uet.jm.ui.viewModel.ComicDetailViewModel
+import com.par9uet.jm.utils.resolveActiveCommentKeywords
 import org.koin.compose.getKoin
 import org.koin.compose.viewmodel.koinActivityViewModel
 
@@ -240,10 +243,23 @@ fun ComicCommentArea(
     useScaffold: Boolean = false,
     comicDetailViewModel: ComicDetailViewModel = koinActivityViewModel(),
     userManager: UserManager = getKoin().get(),
+    localSettingManager: LocalSettingManager = getKoin().get(),
 ) {
     val focusManager = LocalFocusManager.current
     val mainNavController = LocalMainNavController.current
     val isLogin by userManager.isLoginState.collectAsState(false)
+    val localSetting by localSettingManager.localSettingState.collectAsState()
+    val activeBlockedKeywordCount = remember(
+        localSetting.commentKeywordFilterEnabled,
+        localSetting.commentBlockedKeywords,
+        localSetting.commentEnabledPresetIds,
+    ) {
+        resolveActiveCommentKeywords(
+            enabled = localSetting.commentKeywordFilterEnabled,
+            customKeywords = localSetting.commentBlockedKeywords,
+            enabledPresetIds = localSetting.commentEnabledPresetIds,
+        ).size
+    }
     val commentInputFocusRequester = remember { FocusRequester() }
     val commentLazyPagingItems = comicDetailViewModel.commentPager.collectAsLazyPagingItems()
     val likedCommentIds by comicDetailViewModel.likedCommentIds.collectAsState()
@@ -302,6 +318,25 @@ fun ComicCommentArea(
                     .padding(start = 10.dp, end = 10.dp, top = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                TextButton(
+                    onClick = { mainNavController.navigate("commentFilterSetting") },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Block,
+                        contentDescription = "评论关键词屏蔽",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (activeBlockedKeywordCount > 0) {
+                            "已屏蔽 $activeBlockedKeywordCount 词"
+                        } else {
+                            "关键词屏蔽"
+                        },
+                        fontSize = 12.sp
+                    )
+                }
                 Spacer(modifier = Modifier.weight(1f))
                 IconButton(
                     onClick = { commentLazyPagingItems.refresh() },
@@ -342,6 +377,25 @@ fun ComicCommentArea(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
+                TextButton(
+                    onClick = { mainNavController.navigate("commentFilterSetting") },
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Block,
+                        contentDescription = "评论关键词屏蔽",
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = if (activeBlockedKeywordCount > 0) {
+                            "已屏蔽 $activeBlockedKeywordCount 词"
+                        } else {
+                            "关键词屏蔽"
+                        },
+                        fontSize = 12.sp
+                    )
+                }
                 IconButton(
                     onClick = { commentLazyPagingItems.refresh() },
                     enabled = commentLazyPagingItems.loadState.refresh !is LoadState.Loading

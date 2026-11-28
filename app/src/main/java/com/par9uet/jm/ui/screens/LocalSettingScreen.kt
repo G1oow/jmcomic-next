@@ -106,6 +106,7 @@ import com.par9uet.jm.ui.components.SearchExclusionEditor
 import com.par9uet.jm.ui.components.CommonScaffold
 import com.par9uet.jm.ui.components.SelectDialog
 import com.par9uet.jm.ui.components.SelectOption
+import com.par9uet.jm.utils.resolveActiveCommentKeywords
 import org.koin.compose.getKoin
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -289,6 +290,22 @@ fun LocalSettingScreen(
                         "\u9996\u9875 ${gridColumnsText(localSetting.homeGridColumns)} \u00b7 \u6536\u85cf ${gridColumnsText(localSetting.collectGridColumns)} \u00b7 \u7f13\u5b58 ${gridColumnsText(localSetting.downloadGridColumns)} \u00b7 \u5386\u53f2 ${gridColumnsText(localSetting.historyGridColumns)} \u00b7 \u641c\u7d22 ${gridColumnsText(localSetting.searchGridColumns)}"
                     ) {
                         openSetting(SettingType.AllGridColumns)
+                    }
+                    val activeCommentKeywordCount = resolveActiveCommentKeywords(
+                        enabled = localSetting.commentKeywordFilterEnabled,
+                        customKeywords = localSetting.commentBlockedKeywords,
+                        enabledPresetIds = localSetting.commentEnabledPresetIds,
+                    ).size
+                    SettingsRow(
+                        icon = Icons.Rounded.Block,
+                        title = "评论区关键词屏蔽",
+                        value = when {
+                            !localSetting.commentKeywordFilterEnabled -> "未启用"
+                            activeCommentKeywordCount == 0 -> "已启用 · 未配置词"
+                            else -> "已启用 · $activeCommentKeywordCount 词"
+                        },
+                    ) {
+                        mainNavController.navigate("commentFilterSetting")
                     }
                 }
             }

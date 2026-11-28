@@ -157,6 +157,10 @@ data class LocalSetting(
     val cacheIntegrityCheckMode: String = CACHE_INTEGRITY_CHECK_OFF,
     // 首页推荐排除标签：带有这些标签的漫画不会出现在首页推荐中
     val homeExcludedTags: List<String> = listOf(),
+    // 评论区关键词屏蔽：开启后按已启用预设与自定义关键词过滤评论及回复
+    val commentKeywordFilterEnabled: Boolean = false,
+    val commentBlockedKeywords: List<String> = emptyList(),
+    val commentEnabledPresetIds: List<String> = emptyList(),
 )
 
 const val COLOR_PALETTE_PRESET_DEFAULT = "default"

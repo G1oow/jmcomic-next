@@ -22,9 +22,12 @@ import com.par9uet.jm.store.ToastManager
 import com.par9uet.jm.ui.models.CommonUIState
 import com.par9uet.jm.ui.pagingSource.ComicCommentPagingSource
 import com.par9uet.jm.utils.log
+import com.par9uet.jm.utils.resolveActiveCommentKeywords
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -299,13 +302,23 @@ class ComicDetailViewModel(
     val commentComicIdState = _commentComicIdState.asStateFlow()
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val commentPager = _commentComicIdState.flatMapLatest { comicId ->
+    val commentPager = combine(
+        _commentComicIdState,
+        localSettingManager.localSettingState,
+    ) { comicId, setting ->
+        comicId to resolveActiveCommentKeywords(
+            enabled = setting.commentKeywordFilterEnabled,
+            customKeywords = setting.commentBlockedKeywords,
+            enabledPresetIds = setting.commentEnabledPresetIds,
+        )
+    }.distinctUntilChanged().flatMapLatest { (comicId, blockedKeywords) ->
         Pager(
             config = PagingConfig(pageSize = 20, prefetchDistance = 6, initialLoadSize = 20),
             pagingSourceFactory = {
                 ComicCommentPagingSource(
-                    comicRepository,
-                    comicId
+                    comicRepository = comicRepository,
+                    comicId = comicId,
+                    blockedKeywords = blockedKeywords,
                 )
             }
         ).flow
