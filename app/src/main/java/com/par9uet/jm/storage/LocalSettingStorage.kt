@@ -23,6 +23,8 @@ import com.par9uet.jm.data.models.LocalSetting
 import com.par9uet.jm.utils.flattenBlockedTagTemplates
 import com.par9uet.jm.utils.normalizeBlockedTagList
 import com.par9uet.jm.utils.normalizeBlockedTagTemplates
+import com.par9uet.jm.utils.normalizeCommentFilterPresetIds
+import com.par9uet.jm.utils.normalizeCommentKeywordList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -285,6 +287,22 @@ class LocalSettingStorage(
                         AiChatModel.fromId(saved.aiModel).id
                     } else {
                         AiChatModel.UnlimitedAi.id
+                    },
+                    commentKeywordFilterEnabled = savedJson.hasField("commentKeywordFilterEnabled") &&
+                        saved.commentKeywordFilterEnabled,
+                    commentBlockedKeywords = if (savedJson.hasField("commentBlockedKeywords")) {
+                        normalizeCommentKeywordList(
+                            runCatching { saved.commentBlockedKeywords }.getOrNull().orEmpty()
+                        )
+                    } else {
+                        emptyList()
+                    },
+                    commentEnabledPresetIds = if (savedJson.hasField("commentEnabledPresetIds")) {
+                        normalizeCommentFilterPresetIds(
+                            runCatching { saved.commentEnabledPresetIds }.getOrNull().orEmpty()
+                        )
+                    } else {
+                        emptyList()
                     },
                 )
             }
