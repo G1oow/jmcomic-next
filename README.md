@@ -16,10 +16,20 @@
 > [!WARNING]
 > 本项目包含 NSFW 内容。请根据自身情况与当地法律法规谨慎使用。
 
-JMcomic Next 是一个 Android 漫画客户端，界面使用 Kotlin、Jetpack Compose 与 Material 3 实现。项目在 [Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile) 的基础上继续维护，默认使用 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java) 作为内置数据源，同时保留可切换的网络 API 入口。
+JMcomic Next 是一个 Android 漫画客户端，界面使用 Kotlin、Jetpack Compose 与 Material 3 实现。本仓库是 [HongShi2333/jmcomic-next](https://github.com/HongShi2333/jmcomic-next) 的 fork，并在此基础上二次开发。项目默认使用 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java) 作为内置数据源，同时保留可切换的网络 API 入口。
 
 - 手机端 `:app`（Android 6.0+）与手表端 `:jm-mobile-clock`（Wear OS，Android 7.1+）是两个独立的可安装应用。
 - 网络、缓存、下载、AI 对话一律按 `Service / DAO / Storage → Repository → ViewModel → StateFlow → Composable` 分层，不在 UI 层直接请求数据。
+
+## 仓库关系
+
+| 仓库 | 角色 |
+| --- | --- |
+| [`HongShi2333/jmcomic-next`](https://github.com/HongShi2333/jmcomic-next) | 上游基础仓库，本仓库从它二次开发而来 |
+| [`G1oow/jmcomic-next`](https://github.com/G1oow/jmcomic-next) | 当前维护的仓库，提交、CI 构建与 Releases 都在这里 |
+| [`Dedicatus546/jm-mobile`](https://github.com/Dedicatus546/jm-mobile) | 更早的原始项目，Compose 版客户端的最初来源 |
+
+本 README 由上游仓库的同名文档改写而来，并按本仓库当前代码重新整理。本地仓库把 `origin` 指向上游基础仓库、`fork` 指向本仓库，PR 目标为本仓库的 `main`。
 
 ## 截图
 
@@ -315,8 +325,8 @@ UI 状态优先复用 `ui/models` 中的 `CommonUIState`、`ListUIState`、`Page
 `version.properties` 是唯一版本来源，`app` 与 `jm-mobile-clock` 都读它：
 
 ```properties
-VERSION_CODE=136
-VERSION_NAME=1.2.16
+VERSION_CODE=139
+VERSION_NAME=1.2.19
 ```
 
 发版规则：
@@ -332,7 +342,7 @@ VERSION_NAME=1.2.16
 
 ### 应用内更新
 
-「设置 → 检查更新」可手动检查，启动后也会静默检查（24 小时内不重复请求）。更新源是本 fork 的 GitHub Releases，常量在 `utils/AppUpdateVersion.kt`：
+「设置 → 检查更新」可手动检查，冷启动后也会检查一次（24 小时内不重复请求）。更新源是本仓库（`G1oow/jmcomic-next`）的 GitHub Releases，常量在 `utils/AppUpdateVersion.kt`：
 
 - 读取 `https://api.github.com/repos/G1oow/jmcomic-next/releases/latest`，按 `VERSION_NAME` 逐段比较版本。
 - 支持应用内下载（暂停、后台下载、通知进度），完成后调起系统安装器。
@@ -378,7 +388,7 @@ VERSION_NAME=1.2.16
 
 ## 致谢
 
-本项目离不开 [LINUX DO 论坛](https://linux.do) 与 [RawChat 团队](https://linux.do/u/RawChat) 的支持，也感谢上游项目 [Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile) 与 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java)。
+本项目离不开 [LINUX DO 论坛](https://linux.do) 与 [RawChat 团队](https://linux.do/u/RawChat) 的支持，也感谢上游基础仓库 [HongShi2333/jmcomic-next](https://github.com/HongShi2333/jmcomic-next)、更早的 [Dedicatus546/jm-mobile](https://github.com/Dedicatus546/jm-mobile) 与 [JUKOMU/JMComic-Api-Java](https://github.com/JUKOMU/JMComic-Api-Java)。
 
 <details>
 <summary>提交建议与反馈问题的朋友们</summary>
@@ -397,4 +407,4 @@ GitHub 提交 issue 的朋友：yinshu2002、lyston11、Nines70、lin39c5bb、Zh
 
 本项目仅供学习、研究与技术交流使用。项目作者与任何第三方服务、原始应用或内容提供方无关。
 
-使用者应自行遵守当地法律法规以及相关服务条款。因使用本项目产生的任何法律、版权、账号、数据或财务风险均由使用者自行承担。许可证见仓库中的 `LICENSE`（GPL-3.0），原项目版权与许可信息请参考 `Dedicatus546/jm-mobile`。
+使用者应自行遵守当地法律法规以及相关服务条款。因使用本项目产生的任何法律、版权、账号、数据或财务风险均由使用者自行承担。许可证见仓库中的 `LICENSE`（GPL-3.0），上游基础仓库与原始项目的版权、许可信息请参考 `HongShi2333/jmcomic-next` 与 `Dedicatus546/jm-mobile`。
